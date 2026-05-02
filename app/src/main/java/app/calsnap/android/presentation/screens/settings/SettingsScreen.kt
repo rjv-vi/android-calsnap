@@ -2,6 +2,7 @@ package app.calsnap.android.presentation.screens.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
+import app.calsnap.android.data.remote.GeminiClient
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
@@ -48,16 +52,26 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         ) {
             SectionLabel(stringResource(R.string.settings_section_ai))
             ApiKeyCard(
-                hasKey    = ui.hasGeminiKey,
-                onSave    = viewModel::saveGeminiKey,
-                onClear   = viewModel::clearGeminiKey,
+                hasKey = ui.hasGeminiKey,
+                onSave = viewModel::saveGeminiKey,
+                onClear = viewModel::clearGeminiKey,
+            )
+            Spacer(Modifier.height(12.dp))
+            ModelCard(
+                hasKey = ui.hasGeminiKey,
+                selectedModel = ui.selectedModel,
+                models = ui.models,
+                loading = ui.modelsLoading,
+                error = ui.modelsError,
+                onLoad = viewModel::loadGeminiModels,
+                onSelect = viewModel::selectGeminiModel,
             )
 
             Spacer(Modifier.height(24.dp))
             SectionLabel(stringResource(R.string.settings_section_appearance))
             ThemeRow(
-                darkTheme  = ui.darkTheme,
-                onChange   = viewModel::setDarkTheme,
+                darkTheme = ui.darkTheme,
+                onChange = viewModel::setDarkTheme,
             )
             LanguageRow(
                 current = ui.language,
@@ -108,15 +122,15 @@ private fun ApiKeyCard(
             )
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick  = { onSave(input); input = "" },
-                enabled  = input.isNotBlank(),
+                onClick = { onSave(input); input = "" },
+                enabled = input.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.settings_api_save))
             }
             if (hasKey) {
                 OutlinedButton(
-                    onClick  = onClear,
+                    onClick = onClear,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.settings_api_clear))
@@ -127,9 +141,57 @@ private fun ApiKeyCard(
 }
 
 @Composable
+private fun ModelCard(
+    hasKey: Boolean,
+    selectedModel: String,
+    models: List<GeminiClient.GeminiModelInfo>,
+    loading: Boolean,
+    error: String?,
+    onLoad: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.titleSmall)
+            Text(selectedModel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onLoad,
+                enabled = hasKey && !loading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (loading) CircularProgressIndicator() else Text(stringResource(R.string.settings_model_load))
+            }
+            error?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            if (models.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Column {
+                    models.take(12).forEach { model ->
+                        FilterChip(
+                            selected = model.id == selectedModel,
+                            onClick = { onSelect(model.id) },
+                            label = {
+                                Column {
+                                    Text(model.name)
+                                    Text(model.id, style = MaterialTheme.typography.labelSmall)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ThemeRow(darkTheme: Boolean?, onChange: (Boolean?) -> Unit) {
     Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -148,7 +210,7 @@ private fun ThemeRow(darkTheme: Boolean?, onChange: (Boolean?) -> Unit) {
 @Composable
 private fun LanguageRow(current: String, onChange: (String) -> Unit) {
     Card(Modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

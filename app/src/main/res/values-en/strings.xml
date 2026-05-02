@@ -73,6 +73,8 @@
     <string name="settings_api_hint">Gemini API key (AIza…)</string>
     <string name="settings_api_save">Save key</string>
     <string name="settings_api_clear">Remove key</string>
+    <string name="settings_model_title">Gemini model</string>
+    <string name="settings_model_load">Load available models</string>
     <string name="settings_dark_theme">Dark theme</string>
     <string name="settings_language">Language</string>
     <string name="settings_footer_v">CalSnap Android · 0.1.0</string>

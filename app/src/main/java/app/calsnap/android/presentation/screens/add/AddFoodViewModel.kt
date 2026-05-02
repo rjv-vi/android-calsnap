@@ -44,6 +44,7 @@ class AddFoodViewModel @Inject constructor(
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     fun selectTab(tab: Tab) = _ui.update { it.copy(tab = tab, result = null, error = null) }
+    fun refreshKeyState() = _ui.update { it.copy(hasApiKey = keyStore.hasGeminiKey()) }
 
     fun analyzeText(text: String) {
         if (text.isBlank()) return
@@ -52,8 +53,8 @@ class AddFoodViewModel @Inject constructor(
             runCatching {
                 gemini.generateJson(
                     serializer = FoodAnalysisResult.serializer(),
-                    prompt = "Опиши блюдо: \"$text\". Оцени калории и БЖУ как описал пользователь. Верни JSON по описанной схеме.",
-                    systemInstruction = "Ты — ассистент-нутрициолог. Отвечай строго в виде JSON объекта.",
+                    prompt = "Описание пользователя: \"$text\". Оцени одну реалистичную порцию, калории и БЖУ. Верни только JSON.",
+                    systemInstruction = "Ты русскоязычный нутрициолог CalSnap. JSON-схема: {\"food\":\"string\",\"portion\":\"string\",\"calories\":0,\"protein\":0,\"fat\":0,\"carbs\":0,\"description\":\"string\",\"ingredients\":[\"string\"]}. Не добавляй markdown.",
                 )
             }.onSuccess { r ->
                 _ui.update { it.copy(loading = false, result = r, resultSource = FoodLogEntity.Source.TEXT_AI) }

@@ -3,66 +3,88 @@ package app.calsnap.android.data.remote
 import android.graphics.Bitmap
 import app.calsnap.android.data.model.FoodAnalysisResult
 import app.calsnap.android.data.preferences.SecureKeyStore
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.Content
-import com.google.ai.client.generativeai.type.content
-import com.google.ai.client.generativeai.type.generationConfig
+import app.calsnap.android.data.preferences.UserPreferences
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Thin wrapper over the Google Generative AI SDK. Keeps the SDK surface
- * area at one choke point so we can swap providers later (e.g. Firebase AI
- * Logic or a server proxy) without touching repositories or ViewModels.
- */
 @Singleton
 class GeminiClient @Inject constructor(
     private val keyStore: SecureKeyStore,
+    private val preferences: UserPreferences,
     private val json: Json,
+    private val client: OkHttpClient,
 ) {
-    class NoApiKeyException : IllegalStateException("Gemini API key is not set. Add it in Settings → API.")
+    data class GeminiModelInfo(
+        val id: String,
+        val name: String,
+        val description: String,
+    )
 
-    /** Models we fall back through in order, cheapest first. */
+    class NoApiKeyException : IllegalStateException("Gemini API key is not set. Add it in Settings → API.")
+    class GeminiApiException(val statusCode: Int, message: String) : IllegalStateException(message)
+
     private val defaultFallbackChain = listOf(
         "gemini-2.0-flash-lite",
         "gemini-2.0-flash",
         "gemini-2.5-flash",
     )
 
-    private fun buildModel(name: String, preferJson: Boolean): GenerativeModel {
+    suspend fun fetchModels(): List<GeminiModelInfo> {
         val apiKey = keyStore.getGeminiApiKey() ?: throw NoApiKeyException()
-        return GenerativeModel(
-            modelName        = name,
-            apiKey           = apiKey,
-            generationConfig = generationConfig {
-                temperature     = 0.2f
-                maxOutputTokens = 2048
-                if (preferJson) responseMimeType = "application/json"
-            },
-        )
+        val request = Request.Builder()
+            .url("$BASE_URL/models?key=$apiKey&pageSize=100")
+            .get()
+            .build()
+        val root = json.parseToJsonElement(execute(request)).jsonObject
+        return root["models"]?.jsonArray.orEmpty()
+            .mapNotNull { element ->
+                val model = element.jsonObject
+                val id = model["name"]?.jsonPrimitive?.content?.removePrefix("models/") ?: return@mapNotNull null
+                val methods = model["supportedGenerationMethods"]?.jsonArray.orEmpty()
+                    .map { it.jsonPrimitive.content }
+                val lower = id.lowercase()
+                if ("generateContent" !in methods) return@mapNotNull null
+                if (listOf("embedding", "aqa", "retrieval").any(lower::contains)) return@mapNotNull null
+                GeminiModelInfo(
+                    id = id,
+                    name = model["displayName"]?.jsonPrimitive?.content ?: id,
+                    description = model["description"]?.jsonPrimitive?.content.orEmpty(),
+                )
+            }
+            .sortedWith(compareByDescending<GeminiModelInfo> { "flash" in it.id.lowercase() }.thenBy { it.name })
     }
 
-    /**
-     * Single-shot structured text generation. Walks the fallback chain
-     * if an upstream model is unavailable / rate-limited.
-     */
     suspend fun <T> generateJson(
         serializer: DeserializationStrategy<T>,
         prompt: String,
         systemInstruction: String? = null,
         modelName: String? = null,
     ): T {
-        val chain = modelName?.let(::listOf) ?: defaultFallbackChain
-        var lastError: Throwable? = null
-        for (model in chain) {
-            runCatching {
-                val text = generateText(model, prompt, systemInstruction, preferJson = true)
-                return json.decodeFromString(serializer, text)
-            }.onFailure { lastError = it }
-        }
-        throw lastError ?: IllegalStateException("Gemini: all models failed")
+        val raw = generateTextWithFallback(
+            prompt = prompt,
+            systemInstruction = systemInstruction,
+            modelName = modelName,
+            preferJson = true,
+        )
+        return json.decodeFromString(serializer, sanitizeJson(raw))
     }
 
     suspend fun generateText(
@@ -70,38 +92,157 @@ class GeminiClient @Inject constructor(
         prompt: String,
         systemInstruction: String? = null,
         preferJson: Boolean = false,
+    ): String = generateTextWithFallback(
+        prompt = prompt,
+        systemInstruction = systemInstruction,
+        modelName = modelName,
+        preferJson = preferJson,
+    )
+
+    suspend fun generateTextWithFallback(
+        prompt: String,
+        systemInstruction: String? = null,
+        modelName: String? = null,
+        preferJson: Boolean = false,
     ): String {
-        val model = buildModel(modelName, preferJson)
-        val contents = mutableListOf<Content>().apply {
-            if (systemInstruction != null) add(content(role = "user") { text(systemInstruction) })
-            add(content { text(prompt) })
+        var lastError: Throwable? = null
+        for (model in modelChain(modelName)) {
+            runCatching {
+                return requestGenerateContent(
+                    modelName = model,
+                    parts = listOf(textPart(prompt)),
+                    systemInstruction = systemInstruction,
+                    preferJson = preferJson,
+                )
+            }.onFailure { lastError = it }
         }
-        return model.generateContent(*contents.toTypedArray()).text
-            ?: error("Gemini returned empty response")
+        throw lastError ?: IllegalStateException("Gemini: all models failed")
     }
 
-    /** Photo → FoodAnalysisResult. Used by the AddFood/Photo tab. */
     suspend fun analyzeFoodPhoto(
         bitmap: Bitmap,
         userHint: String?,
         modelName: String? = null,
     ): FoodAnalysisResult {
-        val chain = modelName?.let(::listOf) ?: defaultFallbackChain
         var lastError: Throwable? = null
-        for (model in chain) {
+        val imagePart = imagePart(bitmap)
+        for (model in modelChain(modelName)) {
             runCatching {
-                val generative = buildModel(model, preferJson = true)
-                val result = generative.generateContent(
-                    content {
-                        image(bitmap)
-                        text(buildPhotoPrompt(userHint))
-                    },
+                val raw = requestGenerateContent(
+                    modelName = model,
+                    parts = listOf(textPart(buildPhotoPrompt(userHint)), imagePart),
+                    preferJson = true,
                 )
-                val raw = result.text ?: error("empty")
-                return json.decodeFromString(FoodAnalysisResult.serializer(), raw)
+                return json.decodeFromString(FoodAnalysisResult.serializer(), sanitizeJson(raw))
             }.onFailure { lastError = it }
         }
         throw lastError ?: IllegalStateException("Gemini photo: all models failed")
+    }
+
+    private suspend fun modelChain(modelName: String?): List<String> {
+        val selected = modelName ?: preferences.geminiModel.first()
+        return (listOf(selected) + defaultFallbackChain)
+            .filter { it.isNotBlank() }
+            .distinct()
+    }
+
+    private suspend fun requestGenerateContent(
+        modelName: String,
+        parts: List<JsonObject>,
+        systemInstruction: String? = null,
+        preferJson: Boolean,
+    ): String {
+        val apiKey = keyStore.getGeminiApiKey() ?: throw NoApiKeyException()
+        val body = buildJsonObject {
+            putJsonArray("contents") {
+                add(buildJsonObject {
+                    putJsonArray("parts") {
+                        parts.forEach { add(it) }
+                    }
+                })
+            }
+            if (!systemInstruction.isNullOrBlank()) {
+                putJsonObject("system_instruction") {
+                    putJsonArray("parts") {
+                        add(textPart(systemInstruction))
+                    }
+                }
+            }
+            putJsonObject("generationConfig") {
+                put("temperature", 0.2)
+                put("maxOutputTokens", 2048)
+                if (preferJson) put("responseMimeType", "application/json")
+            }
+        }
+        val request = Request.Builder()
+            .url("$BASE_URL/models/$modelName:generateContent?key=$apiKey")
+            .post(body.toString().toRequestBody(JSON_MEDIA))
+            .build()
+        return extractText(execute(request))
+    }
+
+    private suspend fun execute(request: Request): String = withContext(Dispatchers.IO) {
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw GeminiApiException(response.code, parseError(response.code, body))
+            body
+        }
+    }
+
+    private fun extractText(raw: String): String {
+        val root = json.parseToJsonElement(raw).jsonObject
+        val parts = root["candidates"]?.jsonArray
+            ?.firstOrNull()
+            ?.jsonObject
+            ?.get("content")
+            ?.jsonObject
+            ?.get("parts")
+            ?.jsonArray
+            .orEmpty()
+        val text = parts.joinToString("") { it.jsonObject["text"]?.jsonPrimitive?.content.orEmpty() }.trim()
+        if (text.isBlank()) error("Gemini returned empty response")
+        return text
+    }
+
+    private fun textPart(text: String): JsonObject = buildJsonObject {
+        put("text", text)
+    }
+
+    private fun imagePart(bitmap: Bitmap): JsonObject {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+        val base64 = android.util.Base64.encodeToString(stream.toByteArray(), android.util.Base64.NO_WRAP)
+        return buildJsonObject {
+            putJsonObject("inline_data") {
+                put("mime_type", "image/jpeg")
+                put("data", base64)
+            }
+        }
+    }
+
+    private fun sanitizeJson(raw: String): String {
+        var value = raw.trim()
+            .replace(Regex("^```(?:json)?\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s*```$"), "")
+            .trim()
+        val objectStart = value.indexOf('{')
+        val arrayStart = value.indexOf('[')
+        val start = listOf(objectStart, arrayStart).filter { it >= 0 }.minOrNull() ?: return value
+        val end = if (start == objectStart) value.lastIndexOf('}') else value.lastIndexOf(']')
+        if (end > start) value = value.substring(start, end + 1)
+        return value
+    }
+
+    private fun parseError(statusCode: Int, body: String): String {
+        val message = runCatching {
+            json.parseToJsonElement(body).jsonObject["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
+        }.getOrNull()
+        return when (statusCode) {
+            400 -> "Неверный API ключ или запрос Gemini"
+            403 -> "Доступ к Gemini запрещён — проверь API ключ"
+            429 -> "Превышен лимит Gemini — попробуй позже или выбери другую модель"
+            else -> message ?: "Ошибка Gemini API: $statusCode"
+        }
     }
 
     private fun buildPhotoPrompt(userHint: String?): String = buildString {
@@ -114,5 +255,10 @@ class GeminiClient @Inject constructor(
         if (!userHint.isNullOrBlank()) {
             append(" Подсказка пользователя: «$userHint».")
         }
+    }
+
+    private companion object {
+        const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+        val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     }
 }

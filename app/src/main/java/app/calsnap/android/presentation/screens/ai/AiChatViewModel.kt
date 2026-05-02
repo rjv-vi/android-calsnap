@@ -69,8 +69,7 @@ class AiChatViewModel @Inject constructor(
                     append("белки ${profile?.proteinGoal ?: 100}г, углеводы ${profile?.carbsGoal ?: 250}г, жиры ${profile?.fatGoal ?: 60}г. ")
                     append("Сегодня: $food. Вода: ${water}мл.")
                 }
-                gemini.generateText(
-                    modelName = "gemini-2.0-flash-lite",
+                gemini.generateTextWithFallback(
                     prompt = text,
                     systemInstruction = system,
                 )
