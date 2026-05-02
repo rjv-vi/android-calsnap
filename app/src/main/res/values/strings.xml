@@ -12,6 +12,10 @@
 
     <!-- Home -->
     <string name="home_greeting">Привет, %1$s!</string>
+    <string name="greet_night">Доброй ночи</string>
+    <string name="greet_morning">Доброе утро</string>
+    <string name="greet_day">Добрый день</string>
+    <string name="greet_evening">Добрый вечер</string>
     <string name="home_add_food">Добавить еду</string>
     <string name="home_calories_eaten_label">Калорий съедено</string>
     <string name="home_remaining">Осталось %1$d ккал</string>
@@ -67,13 +71,21 @@
     <string name="onboarding_welcome_title">Добро пожаловать 🍎</string>
     <string name="onboarding_welcome_sub">Настроим приложение лично под тебя</string>
     <string name="onboarding_body_title">Тело и возраст</string>
+    <string name="onboarding_activity_title">Активность</string>
+    <string name="onboarding_activity_subtitle">Сколько ты двигаешься?</string>
     <string name="onboarding_goal_title">Ритм и цель</string>
+    <string name="onboarding_goal_subtitle">AI настроит калории под неё</string>
     <string name="onboarding_finish_title">Почти готово</string>
+    <string name="onboarding_preferences_title">Пищевые предпочтения</string>
+    <string name="onboarding_preferences_subtitle">AI учтёт их при советах, это необязательно</string>
     <string name="onboarding_name_label">Твоё имя</string>
     <string name="onboarding_gender_label">Пол</string>
     <string name="onboarding_gender_male">Мужской</string>
     <string name="onboarding_gender_female">Женский</string>
     <string name="onboarding_dob_label">Дата рождения</string>
+    <string name="onboarding_dob_year">Год</string>
+    <string name="onboarding_dob_month">Мес</string>
+    <string name="onboarding_dob_day">День</string>
     <string name="onboarding_height_label">Рост</string>
     <string name="onboarding_weight_label">Вес</string>
     <string name="onboarding_activity_label">Активность</string>
@@ -86,6 +98,15 @@
     <string name="onboarding_goal_maintain">Поддерживать</string>
     <string name="onboarding_goal_gain">Набрать</string>
     <string name="onboarding_allergies_label">Аллергии / ограничения</string>
+    <string name="onboarding_allergies_placeholder">Например: арахис, морепродукты</string>
+    <string name="pref_no_meat">Без мяса</string>
+    <string name="pref_no_gluten">Без глютена</string>
+    <string name="pref_no_lactose">Без лактозы</string>
+    <string name="pref_no_sugar">Без сахара</string>
+    <string name="pref_vegan">Веган</string>
+    <string name="pref_keto">Кето</string>
+    <string name="pref_halal">Халяль</string>
+    <string name="pref_no_eggs">Без яиц</string>
     <string name="onboarding_back">Назад</string>
     <string name="onboarding_next">Дальше</string>
     <string name="onboarding_finish">Начать 🚀</string>

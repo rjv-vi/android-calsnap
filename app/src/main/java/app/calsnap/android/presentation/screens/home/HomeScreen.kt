@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,11 +50,16 @@ import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 import app.calsnap.android.ui.theme.MacroCarbs
 import app.calsnap.android.ui.theme.MacroFat
 import app.calsnap.android.ui.theme.MacroProtein
 import app.calsnap.android.ui.theme.MacroWater
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -72,16 +78,17 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AnimatedSection(0) { HomeHeader(ui) }
-            AnimatedSection(1) { CalorieHeroCard(eaten = ui.totalCalories, goal = goal, onAddFood = onAddFood) }
-            AnimatedSection(2) {
+            AnimatedSection(1) { CalendarStrip(ui.calendarDays, ui.selectedDay, viewModel::selectDay) }
+            AnimatedSection(2) { CalorieHeroCard(eaten = ui.totalCalories, goal = goal, onAddFood = onAddFood) }
+            AnimatedSection(3) {
                 MacroRow(
                     proteinEaten = ui.totalProtein, proteinGoal = ui.profile?.proteinGoal ?: 100,
                     carbsEaten = ui.totalCarbs, carbsGoal = ui.profile?.carbsGoal ?: 250,
                     fatEaten = ui.totalFat, fatGoal = ui.profile?.fatGoal ?: 60,
                 )
             }
-            AnimatedSection(3) { WaterMiniCard(ui.waterMl, ui.waterGoalMl) }
-            AnimatedSection(4) { TodayCard(ui, onAddFood) }
+            AnimatedSection(4) { WaterMiniCard(ui.waterMl, ui.waterGoalMl) }
+            AnimatedSection(5) { TodayCard(ui, onAddFood) }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -96,7 +103,7 @@ private fun HomeHeader(ui: HomeViewModel.UiState) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.home_section_today),
+                text = timeGreeting(),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
@@ -115,6 +122,80 @@ private fun HomeHeader(ui: HomeViewModel.UiState) {
             text = if (ui.entries.isEmpty()) "0 ${stringResource(R.string.unit_kcal)}" else "${ui.totalCalories} ${stringResource(R.string.unit_kcal)}",
             selected = true,
             icon = "🔥",
+        )
+    }
+}
+
+@Composable
+private fun timeGreeting(): String {
+    val hour = LocalTime.now().hour
+    return stringResource(
+        when {
+            hour < 6 -> R.string.greet_night
+            hour < 12 -> R.string.greet_morning
+            hour < 18 -> R.string.greet_day
+            else -> R.string.greet_evening
+        },
+    )
+}
+
+@Composable
+private fun CalendarStrip(days: List<HomeViewModel.CalendarDay>, selected: LocalDate, onSelect: (LocalDate) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        days.forEach { day ->
+            val isSelected = day.date == selected
+            CalendarDayChip(day = day, selected = isSelected, onClick = { onSelect(day.date) })
+        }
+    }
+}
+
+@Composable
+private fun CalendarDayChip(day: HomeViewModel.CalendarDay, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .calSnapClickable(pressedScale = 0.90f, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            text = day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Black,
+        )
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(17.dp))
+                .background(if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.13f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = day.date.dayOfMonth.toString(),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Black,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(5.dp)
+                .clip(RoundedCornerShape(99.dp))
+                .background(
+                    when {
+                        selected -> CalSnapStreak
+                        day.hasLog -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.52f)
+                        else -> Color.Transparent
+                    },
+                ),
         )
     }
 }

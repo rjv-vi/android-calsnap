@@ -17,6 +17,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -59,6 +62,7 @@ import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun OnboardingScreen(
     onFinished: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
@@ -68,7 +72,7 @@ fun OnboardingScreen(
     var weight by remember { mutableStateOf(draft.weightKg.toInt().toString()) }
     val age = BmrCalculator.ageFromDob(draft.dob)
     val canFinish = draft.name.isNotBlank() && age in 5..120 && draft.heightCm in 80f..240f && draft.weightKg in 25f..300f
-    val step = draft.step.coerceIn(1, 4)
+    val step = draft.step.coerceIn(1, 5)
     val canNext = when (step) {
         1 -> draft.name.isNotBlank()
         2 -> age in 5..120 && draft.heightCm in 80f..240f && draft.weightKg in 25f..300f
@@ -105,8 +109,9 @@ fun OnboardingScreen(
                     when (currentStep) {
                         1 -> StepIdentity(draft, viewModel)
                         2 -> StepBody(draft, viewModel, height, weight, { height = it }, { weight = it })
-                        3 -> StepGoals(draft, viewModel)
-                        else -> StepFinish(draft, age)
+                        3 -> StepActivity(draft, viewModel)
+                        4 -> StepGoal(draft, viewModel)
+                        else -> StepPreferences(draft, viewModel)
                     }
                 }
             }
@@ -119,12 +124,12 @@ fun OnboardingScreen(
                 }
                 CalSnapPrimaryButton(
                     onClick = {
-                        if (step < 4) viewModel.update { it.copy(step = step + 1) } else viewModel.finish(onFinished)
+                        if (step < 5) viewModel.update { it.copy(step = step + 1) } else viewModel.finish(onFinished)
                     },
-                    enabled = if (step < 4) canNext else canFinish,
+                    enabled = if (step < 5) canNext else canFinish,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(if (step < 4) stringResource(R.string.onboarding_next) else stringResource(R.string.onboarding_finish))
+                    Text(if (step < 5) stringResource(R.string.onboarding_next) else stringResource(R.string.onboarding_finish))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -160,7 +165,7 @@ private fun LogoBlock() {
 @Composable
 private fun StepDots(step: Int) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        (1..4).forEach { index ->
+        (1..5).forEach { index ->
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -205,12 +210,9 @@ private fun StepBody(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StepTitle(stringResource(R.string.onboarding_body_title), stringResource(R.string.onboarding_dob_label))
-        CalSnapTextField(
-            value = draft.dob,
-            onValueChange = { value -> viewModel.update { it.copy(dob = value.take(10)) } },
-            label = stringResource(R.string.onboarding_dob_label),
-            placeholder = "1998-05-21",
-            modifier = Modifier.fillMaxWidth(),
+        DateDrum(
+            dob = draft.dob,
+            onDob = { value -> viewModel.update { it.copy(dob = value) } },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             CalSnapTextField(
@@ -243,9 +245,72 @@ private fun StepBody(
 }
 
 @Composable
-private fun StepGoals(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
+private fun DateDrum(dob: String, onDob: (String) -> Unit) {
+    val parts = parseDob(dob)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.onboarding_dob_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            DrumColumn(
+                label = stringResource(R.string.onboarding_dob_year),
+                value = parts.year.toString(),
+                onMinus = { onDob(formatDob(parts.copy(year = (parts.year - 1).coerceIn(1940, 2020)))) },
+                onPlus = { onDob(formatDob(parts.copy(year = (parts.year + 1).coerceIn(1940, 2020)))) },
+                modifier = Modifier.weight(1.25f),
+            )
+            DrumColumn(
+                label = stringResource(R.string.onboarding_dob_month),
+                value = parts.month.toString().padStart(2, '0'),
+                onMinus = { onDob(formatDob(parts.copy(month = if (parts.month == 1) 12 else parts.month - 1))) },
+                onPlus = { onDob(formatDob(parts.copy(month = if (parts.month == 12) 1 else parts.month + 1))) },
+                modifier = Modifier.weight(1f),
+            )
+            DrumColumn(
+                label = stringResource(R.string.onboarding_dob_day),
+                value = parts.day.toString().padStart(2, '0'),
+                onMinus = { onDob(formatDob(parts.copy(day = if (parts.day == 1) maxDay(parts.year, parts.month) else parts.day - 1))) },
+                onPlus = { onDob(formatDob(parts.copy(day = if (parts.day >= maxDay(parts.year, parts.month)) 1 else parts.day + 1))) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(formatDob(parts), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun DrumColumn(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        DrumButton("＋", onPlus)
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        DrumButton("−", onMinus)
+    }
+}
+
+@Composable
+private fun DrumButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.82f))
+            .calSnapClickable(pressedScale = 0.86f, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun StepActivity(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        StepTitle(stringResource(R.string.onboarding_goal_title), stringResource(R.string.onboarding_activity_label))
+        StepTitle(stringResource(R.string.onboarding_activity_title), stringResource(R.string.onboarding_activity_subtitle))
         Text(stringResource(R.string.onboarding_activity_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
         ChoiceColumn(
             options = listOf(
@@ -257,6 +322,13 @@ private fun StepGoals(draft: OnboardingViewModel.Draft, viewModel: OnboardingVie
             selected = draft.activity,
             onSelect = { value -> viewModel.update { it.copy(activity = value) } },
         )
+    }
+}
+
+@Composable
+private fun StepGoal(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepTitle(stringResource(R.string.onboarding_goal_title), stringResource(R.string.onboarding_goal_subtitle))
         Text(stringResource(R.string.onboarding_goal_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
         ChoiceRow(
             options = listOf(
@@ -267,24 +339,48 @@ private fun StepGoals(draft: OnboardingViewModel.Draft, viewModel: OnboardingVie
             selected = draft.goal,
             onSelect = { value -> viewModel.update { it.copy(goal = value) } },
         )
-        CalSnapTextField(
-            value = draft.allergies,
-            onValueChange = { value -> viewModel.update { it.copy(allergies = value) } },
-            label = stringResource(R.string.onboarding_allergies_label),
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-        )
+        SummaryPill("🔥", goalLabel(draft.goal))
     }
 }
 
 @Composable
-private fun StepFinish(draft: OnboardingViewModel.Draft, age: Int) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        StepTitle(stringResource(R.string.onboarding_finish_title), stringResource(R.string.onboarding_finish))
+private fun StepPreferences(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
+    val prefOptions = listOf(
+        Choice("no_meat", "🚫🥩", stringResource(R.string.pref_no_meat)),
+        Choice("no_gluten", "🚫🌾", stringResource(R.string.pref_no_gluten)),
+        Choice("no_lactose", "🚫🥛", stringResource(R.string.pref_no_lactose)),
+        Choice("no_sugar", "🚫🍭", stringResource(R.string.pref_no_sugar)),
+        Choice("vegan", "🌱", stringResource(R.string.pref_vegan)),
+        Choice("keto", "🥑", stringResource(R.string.pref_keto)),
+        Choice("halal", "☪️", stringResource(R.string.pref_halal)),
+        Choice("no_eggs", "🚫🥚", stringResource(R.string.pref_no_eggs)),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepTitle(stringResource(R.string.onboarding_preferences_title), stringResource(R.string.onboarding_preferences_subtitle))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            prefOptions.forEach { choice ->
+                PreferenceChip(
+                    choice = choice,
+                    selected = choice.value in draft.preferences,
+                    onClick = {
+                        viewModel.update {
+                            val next = if (choice.value in it.preferences) it.preferences - choice.value else it.preferences + choice.value
+                            it.copy(preferences = next)
+                        }
+                    },
+                )
+            }
+        }
+        CalSnapTextField(
+            value = draft.allergies,
+            onValueChange = { value -> viewModel.update { it.copy(allergies = value) } },
+            label = stringResource(R.string.onboarding_allergies_label),
+            placeholder = stringResource(R.string.onboarding_allergies_placeholder),
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+        )
         SummaryPill("👤", draft.name.ifBlank { "—" })
-        SummaryPill("🎂", if (age > 0) "$age" else "—")
         SummaryPill("📏", "${draft.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${draft.weightKg.toInt()} ${stringResource(R.string.unit_kg)}")
-        SummaryPill("🔥", goalLabel(draft.goal))
     }
 }
 
@@ -360,6 +456,27 @@ private fun <T> ChoiceCard(choice: Choice<T>, selected: Boolean, onClick: () -> 
 }
 
 @Composable
+private fun PreferenceChip(choice: Choice<String>, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f))
+            .calSnapClickable(pressedScale = 0.94f, onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(choice.icon)
+        Text(
+            choice.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Black,
+        )
+    }
+}
+
+@Composable
 private fun goalLabel(goal: UserProfile.Goal): String = when (goal) {
     UserProfile.Goal.LOSE -> stringResource(R.string.onboarding_goal_lose)
     UserProfile.Goal.MAINTAIN -> stringResource(R.string.onboarding_goal_maintain)
@@ -367,5 +484,28 @@ private fun goalLabel(goal: UserProfile.Goal): String = when (goal) {
 }
 
 private fun ageFromDraft(draft: OnboardingViewModel.Draft): Int = BmrCalculator.ageFromDob(draft.dob)
+
+private data class DobParts(val year: Int, val month: Int, val day: Int)
+
+private fun parseDob(dob: String): DobParts {
+    val values = dob.split('-').mapNotNull { it.toIntOrNull() }
+    val fallback = DobParts(1998, 5, 21)
+    if (values.size != 3) return fallback
+    val year = values[0].coerceIn(1940, 2020)
+    val month = values[1].coerceIn(1, 12)
+    val day = values[2].coerceIn(1, maxDay(year, month))
+    return DobParts(year, month, day)
+}
+
+private fun formatDob(parts: DobParts): String {
+    val day = parts.day.coerceIn(1, maxDay(parts.year, parts.month))
+    return "${parts.year}-${parts.month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+}
+
+private fun maxDay(year: Int, month: Int): Int = when (month) {
+    2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
+    4, 6, 9, 11 -> 30
+    else -> 31
+}
 
 private data class Choice<T>(val value: T, val icon: String, val label: String)
