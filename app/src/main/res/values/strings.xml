@@ -34,12 +34,20 @@
 
     <!-- Add food -->
     <string name="add_food_title">Добавить еду</string>
+    <string name="add_food_subtitle">Фото, описание или штрихкод — CalSnap оценит порцию и БЖУ</string>
     <string name="add_tab_photo">Фото</string>
     <string name="add_tab_text">Текст</string>
     <string name="add_tab_barcode">Штрихкод</string>
+    <string name="add_photo_title">Распознать блюдо по фото</string>
+    <string name="add_photo_subtitle">Выбери снимок еды. Если знаешь вес или состав — добавь подсказку.</string>
+    <string name="add_text_title">Описать блюдо текстом</string>
+    <string name="add_text_subtitle">Работает лучше, если указать примерный вес, соус и размер порции.</string>
+    <string name="add_barcode_title">Найти продукт по штрихкоду</string>
+    <string name="add_barcode_subtitle">Пока ручной ввод; сканер камерой будет следующим шагом.</string>
     <string name="add_text_placeholder">Что ты ел? Например: «домашний борщ со сметаной, большая тарелка»</string>
     <string name="add_analyze_with_ai">Анализировать через AI</string>
     <string name="add_confirm_add">Добавить в дневник</string>
+    <string name="add_analyzing">Анализирую…</string>
     <string name="add_photo_hint">Подсказка к фото: вес, соус, размер порции</string>
     <string name="add_pick_photo">Выбрать фото и распознать</string>
     <string name="add_barcode_hint">Штрихкод с упаковки</string>
@@ -54,6 +62,9 @@
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Добро пожаловать 🍎</string>
     <string name="onboarding_welcome_sub">Настроим приложение лично под тебя</string>
+    <string name="onboarding_body_title">Тело и возраст</string>
+    <string name="onboarding_goal_title">Ритм и цель</string>
+    <string name="onboarding_finish_title">Почти готово</string>
     <string name="onboarding_name_label">Твоё имя</string>
     <string name="onboarding_gender_label">Пол</string>
     <string name="onboarding_gender_male">Мужской</string>
@@ -71,6 +82,8 @@
     <string name="onboarding_goal_maintain">Поддерживать</string>
     <string name="onboarding_goal_gain">Набрать</string>
     <string name="onboarding_allergies_label">Аллергии / ограничения</string>
+    <string name="onboarding_back">Назад</string>
+    <string name="onboarding_next">Дальше</string>
     <string name="onboarding_finish">Начать 🚀</string>
 
     <!-- Settings -->
@@ -105,9 +118,11 @@
     <string name="progress_save">Сохранить</string>
 
     <string name="ai_title">AI-нутрициолог</string>
+    <string name="ai_subtitle">Учитывает дневник, воду и твою цель</string>
     <string name="ai_input_hint">Спроси про рацион, воду или цель</string>
     <string name="ai_send">Отправить</string>
     <string name="ai_you">Ты</string>
+    <string name="ai_typing">CalSnap думает…</string>
 
     <!-- Generic -->
     <string name="close">Закрыть</string>
