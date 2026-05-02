@@ -27,7 +27,7 @@ import javax.inject.Inject
 class ProgressViewModel @Inject constructor(
     userRepository: UserRepository,
     foodLogRepository: FoodLogRepository,
-    waterRepository: WaterRepository,
+    private val waterRepository: WaterRepository,
     private val weightRepository: WeightRepository,
 ) : ViewModel() {
 
