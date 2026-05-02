@@ -14,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -29,7 +30,7 @@ class AddFoodViewModel @Inject constructor(
     private val openFoodFactsApi: OpenFoodFactsApi,
 ) : ViewModel() {
 
-    enum class Tab { PHOTO, TEXT, BARCODE }
+    enum class Tab { PHOTO, TEXT, BARCODE, FAVOURITES }
 
     data class UiState(
         val tab: Tab = Tab.PHOTO,
@@ -37,14 +38,24 @@ class AddFoodViewModel @Inject constructor(
         val loading: Boolean = false,
         val result: FoodAnalysisResult? = null,
         val resultSource: FoodLogEntity.Source = FoodLogEntity.Source.TEXT_AI,
+        val favourites: List<FoodLogEntity> = emptyList(),
         val error: String? = null,
     )
 
     private val _ui = MutableStateFlow(UiState(hasApiKey = keyStore.hasGeminiKey()))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            foodLogRepository.observeFavourites().collect { favourites ->
+                _ui.update { it.copy(favourites = favourites) }
+            }
+        }
+    }
+
     fun selectTab(tab: Tab) = _ui.update { it.copy(tab = tab, result = null, error = null) }
     fun refreshKeyState() = _ui.update { it.copy(hasApiKey = keyStore.hasGeminiKey()) }
+    fun resetTransientState() = _ui.update { it.copy(loading = false, result = null, error = null) }
 
     fun analyzeText(text: String) {
         if (text.isBlank()) return
@@ -107,7 +118,7 @@ class AddFoodViewModel @Inject constructor(
 
     fun setError(message: String?) = _ui.update { it.copy(error = message) }
 
-    fun confirmAndLog(result: FoodAnalysisResult, source: FoodLogEntity.Source) {
+    fun confirmAndLog(result: FoodAnalysisResult, source: FoodLogEntity.Source, saveFavourite: Boolean = false) {
         val now = LocalDateTime.now()
         viewModelScope.launch {
             foodLogRepository.add(
@@ -122,8 +133,30 @@ class AddFoodViewModel @Inject constructor(
                     mealType  = MealType.forHour(now.hour),
                     ingredients = result.ingredients.takeIf { it.isNotEmpty() }?.joinToString(", "),
                     source    = source,
+                    favourite = saveFavourite,
                 ),
             )
+        }
+    }
+
+    fun logFavourite(entry: FoodLogEntity) {
+        val now = LocalDateTime.now()
+        viewModelScope.launch {
+            foodLogRepository.add(
+                entry.copy(
+                    id = 0,
+                    loggedAt = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    mealType = MealType.forHour(now.hour),
+                    source = FoodLogEntity.Source.FAVOURITE,
+                    favourite = false,
+                ),
+            )
+        }
+    }
+
+    fun removeFavourite(entry: FoodLogEntity) {
+        viewModelScope.launch {
+            foodLogRepository.update(entry.copy(favourite = false))
         }
     }
 }

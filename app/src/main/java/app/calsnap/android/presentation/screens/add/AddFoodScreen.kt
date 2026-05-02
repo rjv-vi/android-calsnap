@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
+import app.calsnap.android.data.database.entity.FoodLogEntity
 import app.calsnap.android.data.model.FoodAnalysisResult
 import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
@@ -72,68 +73,102 @@ import app.calsnap.android.ui.theme.MacroProtein
 @Composable
 fun AddFoodScreen(
     onDismiss: () -> Unit,
+    sheetMode: Boolean = false,
     viewModel: AddFoodViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.refreshKeyState() }
+    val close = {
+        viewModel.resetTransientState()
+        onDismiss()
+    }
 
-    CalSnapScreen {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            AnimatedSection(0) { Header(onDismiss) }
-            AnimatedSection(1) { AddTabs(selected = ui.tab, onSelect = viewModel::selectTab) }
-            AnimatedSection(2) {
-                CalSnapCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = RoundedCornerShape(32.dp),
-                    padding = PaddingValues(18.dp),
-                    elevation = 18.dp,
-                ) {
-                    if (!ui.hasApiKey && ui.tab != AddFoodViewModel.Tab.BARCODE) {
-                        ApiKeyMissingCard()
-                    } else {
-                        AnimatedContent(
-                            targetState = ui.tab,
-                            transitionSpec = {
-                                (fadeIn(tween(180, easing = FastOutSlowInEasing)) + slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 6 }) togetherWith
-                                    (fadeOut(tween(110, easing = FastOutSlowInEasing)) + slideOutHorizontally(tween(160, easing = FastOutSlowInEasing)) { -it / 8 })
-                            },
-                            label = "addTab",
-                        ) { tab ->
-                            when (tab) {
-                                AddFoodViewModel.Tab.PHOTO -> PhotoTab(viewModel, ui.loading)
-                                AddFoodViewModel.Tab.TEXT -> TextTab(viewModel, ui.loading)
-                                AddFoodViewModel.Tab.BARCODE -> BarcodeTab(viewModel, ui.loading)
-                            }
+    if (sheetMode) {
+        AddFoodContent(ui, viewModel, close, sheetMode = true)
+    } else {
+        CalSnapScreen {
+            AddFoodContent(ui, viewModel, close, sheetMode = false)
+        }
+    }
+}
+
+@Composable
+private fun AddFoodContent(
+    ui: AddFoodViewModel.UiState,
+    viewModel: AddFoodViewModel,
+    onDismiss: () -> Unit,
+    sheetMode: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .then(if (sheetMode) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = if (sheetMode) 8.dp else 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        AnimatedSection(0) { Header(onDismiss) }
+        AnimatedSection(1) { AddTabs(selected = ui.tab, onSelect = viewModel::selectTab) }
+        AnimatedSection(2) {
+            CalSnapCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(),
+                shape = RoundedCornerShape(32.dp),
+                padding = PaddingValues(18.dp),
+                elevation = 18.dp,
+            ) {
+                if (!ui.hasApiKey && ui.tab != AddFoodViewModel.Tab.BARCODE && ui.tab != AddFoodViewModel.Tab.FAVOURITES) {
+                    ApiKeyMissingCard()
+                } else {
+                    AnimatedContent(
+                        targetState = ui.tab,
+                        transitionSpec = {
+                            (fadeIn(tween(180, easing = FastOutSlowInEasing)) + slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 6 }) togetherWith
+                                (fadeOut(tween(110, easing = FastOutSlowInEasing)) + slideOutHorizontally(tween(160, easing = FastOutSlowInEasing)) { -it / 8 })
+                        },
+                        label = "addTab",
+                    ) { tab ->
+                        when (tab) {
+                            AddFoodViewModel.Tab.PHOTO -> PhotoTab(viewModel, ui.loading)
+                            AddFoodViewModel.Tab.TEXT -> TextTab(viewModel, ui.loading)
+                            AddFoodViewModel.Tab.BARCODE -> BarcodeTab(viewModel, ui.loading)
+                            AddFoodViewModel.Tab.FAVOURITES -> FavouritesTab(
+                                favourites = ui.favourites,
+                                onAdd = {
+                                    viewModel.logFavourite(it)
+                                    onDismiss()
+                                },
+                                onRemove = viewModel::removeFavourite,
+                            )
                         }
                     }
-                    if (ui.loading) {
-                        Spacer(Modifier.height(14.dp))
-                        LoadingRow()
-                    }
-                    ui.error?.let {
-                        Spacer(Modifier.height(14.dp))
-                        ErrorCard(it)
-                    }
+                }
+                if (ui.loading) {
+                    Spacer(Modifier.height(14.dp))
+                    LoadingRow()
+                }
+                ui.error?.let {
+                    Spacer(Modifier.height(14.dp))
+                    ErrorCard(it)
                 }
             }
-            ui.result?.let { result ->
-                AnimatedSection(3) {
-                    ResultCard(result) {
+        }
+        ui.result?.let { result ->
+            AnimatedSection(3) {
+                ResultCard(
+                    result = result,
+                    onConfirm = {
                         viewModel.confirmAndLog(result, ui.resultSource)
                         onDismiss()
-                    }
-                }
+                    },
+                    onConfirmFavourite = {
+                        viewModel.confirmAndLog(result, ui.resultSource, saveFavourite = true)
+                        onDismiss()
+                    },
+                )
             }
-            Spacer(Modifier.height(24.dp))
         }
+        Spacer(Modifier.height(if (sheetMode) 10.dp else 24.dp))
     }
 }
 
@@ -177,11 +212,13 @@ private fun AddTabs(selected: AddFoodViewModel.Tab, onSelect: (AddFoodViewModel.
                     AddFoodViewModel.Tab.PHOTO -> stringResource(R.string.add_tab_photo)
                     AddFoodViewModel.Tab.TEXT -> stringResource(R.string.add_tab_text)
                     AddFoodViewModel.Tab.BARCODE -> stringResource(R.string.add_tab_barcode)
+                    AddFoodViewModel.Tab.FAVOURITES -> stringResource(R.string.add_tab_favourites)
                 },
                 icon = when (tab) {
                     AddFoodViewModel.Tab.PHOTO -> "📸"
                     AddFoodViewModel.Tab.TEXT -> "✨"
                     AddFoodViewModel.Tab.BARCODE -> "🏷️"
+                    AddFoodViewModel.Tab.FAVOURITES -> "⭐"
                 },
                 selected = selected == tab,
                 onClick = { onSelect(tab) },
@@ -281,6 +318,77 @@ private fun TextTab(viewModel: AddFoodViewModel, loading: Boolean) {
 }
 
 @Composable
+private fun FavouritesTab(
+    favourites: List<FoodLogEntity>,
+    onAdd: (FoodLogEntity) -> Unit,
+    onRemove: (FoodLogEntity) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        TabIntro("⭐", stringResource(R.string.add_favourites_title), stringResource(R.string.add_favourites_subtitle))
+        if (favourites.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f))
+                    .padding(18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(R.string.add_favourites_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            favourites.forEach { entry ->
+                FavouriteRow(entry = entry, onAdd = { onAdd(entry) }, onRemove = { onRemove(entry) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavouriteRow(entry: FoodLogEntity, onAdd: () -> Unit, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f))
+            .calSnapClickable(pressedScale = 0.97f, onClick = onAdd)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        CalSnapIconTile(icon = "🍽️", size = 44.dp, background = CalSnapStreak.copy(alpha = 0.10f))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(entry.foodName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                entry.portion.orEmpty().ifBlank { "${entry.protein.toInt()} / ${entry.carbs.toInt()} / ${entry.fat.toInt()}${stringResource(R.string.unit_g)}" },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("${entry.calories}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Text(
+                "✕",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.70f))
+                    .calSnapClickable(pressedScale = 0.90f, onClick = onRemove)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Black,
+            )
+        }
+    }
+}
+
+@Composable
 private fun TabIntro(icon: String, title: String, subtitle: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         CalSnapIconTile(icon = icon)
@@ -338,7 +446,7 @@ private fun ErrorCard(message: String) {
 }
 
 @Composable
-private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
+private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConfirmFavourite: () -> Unit) {
     CalSnapCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
@@ -359,6 +467,10 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
             }
         }
         Spacer(Modifier.height(16.dp))
+        CalSnapSecondaryButton(onClick = onConfirmFavourite, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.add_save_favourite))
+        }
+        Spacer(Modifier.height(10.dp))
         Text("${result.calories}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
         Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))
