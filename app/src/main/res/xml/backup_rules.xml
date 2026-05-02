@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="file" path="datastore/" />
+    <include domain="database" path="calsnap.db" />
+    <exclude domain="sharedpref" path="calsnap_secure.xml" />
+</full-backup-content>

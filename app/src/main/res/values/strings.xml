@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App identity -->
+    <string name="app_name">CalSnap</string>
+
+    <!-- Bottom nav -->
+    <string name="nav_home">Дом</string>
+    <string name="nav_progress">Прогресс</string>
+    <string name="nav_add">Добавить</string>
+    <string name="nav_ai">AI</string>
+    <string name="nav_settings">Настройки</string>
+
+    <!-- Home -->
+    <string name="home_greeting">Привет, %1$s!</string>
+    <string name="home_add_food">Добавить еду</string>
+    <string name="home_calories_eaten_label">Калорий съедено</string>
+    <string name="home_remaining">Осталось %1$d ккал</string>
+    <string name="home_exceeded">Превышено на %1$d ккал</string>
+    <string name="home_section_today">Сегодня</string>
+    <string name="home_empty_hint">Нажми «Добавить» чтобы записать первый приём пищи</string>
+    <string name="home_water_title">Вода сегодня</string>
+
+    <!-- Macros -->
+    <string name="macro_protein">Белки</string>
+    <string name="macro_carbs">Углеводы</string>
+    <string name="macro_fat">Жиры</string>
+
+    <!-- Units -->
+    <string name="unit_kcal">ккал</string>
+    <string name="unit_g">г</string>
+    <string name="unit_kg">кг</string>
+    <string name="unit_cm">см</string>
+    <string name="unit_ml">мл</string>
+
+    <!-- Add food -->
+    <string name="add_food_title">Добавить еду</string>
+    <string name="add_tab_photo">Фото</string>
+    <string name="add_tab_text">Текст</string>
+    <string name="add_tab_barcode">Штрихкод</string>
+    <string name="add_text_placeholder">Что ты ел? Например: «домашний борщ со сметаной, большая тарелка»</string>
+    <string name="add_analyze_with_ai">Анализировать через AI</string>
+    <string name="add_confirm_add">Добавить в дневник</string>
+    <string name="add_photo_hint">Подсказка к фото: вес, соус, размер порции</string>
+    <string name="add_pick_photo">Выбрать фото и распознать</string>
+    <string name="add_barcode_hint">Штрихкод с упаковки</string>
+    <string name="add_lookup_barcode">Найти в OpenFoodFacts</string>
+    <string name="add_photo_stub">Фото-AI подключается в v1.1 — пока используй вкладку «Текст»</string>
+    <string name="add_barcode_stub">Сканер штрихкода подключается в v1.1 — пока используй вкладку «Текст»</string>
+
+    <!-- API key -->
+    <string name="api_key_needed_title">Нужен API ключ Gemini</string>
+    <string name="api_key_needed_sub">Получи бесплатный ключ на aistudio.google.com и вставь его в Настройках → API</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Добро пожаловать 🍎</string>
+    <string name="onboarding_welcome_sub">Настроим приложение лично под тебя</string>
+    <string name="onboarding_name_label">Твоё имя</string>
+    <string name="onboarding_gender_label">Пол</string>
+    <string name="onboarding_gender_male">Мужской</string>
+    <string name="onboarding_gender_female">Женский</string>
+    <string name="onboarding_dob_label">Дата рождения</string>
+    <string name="onboarding_height_label">Рост</string>
+    <string name="onboarding_weight_label">Вес</string>
+    <string name="onboarding_activity_label">Активность</string>
+    <string name="onboarding_activity_sedentary">Сидячая</string>
+    <string name="onboarding_activity_light">Лёгкая</string>
+    <string name="onboarding_activity_moderate">Средняя</string>
+    <string name="onboarding_activity_active">Высокая</string>
+    <string name="onboarding_goal_label">Цель</string>
+    <string name="onboarding_goal_lose">Похудеть</string>
+    <string name="onboarding_goal_maintain">Поддерживать</string>
+    <string name="onboarding_goal_gain">Набрать</string>
+    <string name="onboarding_allergies_label">Аллергии / ограничения</string>
+    <string name="onboarding_finish">Начать 🚀</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_section_ai">AI</string>
+    <string name="settings_section_appearance">Внешний вид</string>
+    <string name="settings_api_set">API ключ установлен ✓</string>
+    <string name="settings_api_not_set">API ключ не установлен</string>
+    <string name="settings_api_hint">Gemini API ключ (AIza…)</string>
+    <string name="settings_api_save">Сохранить ключ</string>
+    <string name="settings_api_clear">Удалить ключ</string>
+    <string name="settings_dark_theme">Тёмная тема</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_footer_v">CalSnap Android · 0.1.0</string>
+
+    <string name="progress_title">Прогресс</string>
+    <string name="progress_streak">Стрик</string>
+    <string name="progress_days">дней</string>
+    <string name="progress_bmi">BMI</string>
+    <string name="progress_bmi_low">ниже нормы</string>
+    <string name="progress_bmi_normal">норма</string>
+    <string name="progress_bmi_high">выше нормы</string>
+    <string name="progress_bmi_very_high">высокий</string>
+    <string name="progress_water">Вода</string>
+    <string name="progress_heatmap">Последние 28 дней</string>
+    <string name="progress_weight">Вес</string>
+    <string name="progress_weight_latest">Последняя запись: %.1f кг</string>
+    <string name="progress_weight_empty">Записей веса пока нет</string>
+    <string name="progress_weight_input">Новый вес</string>
+    <string name="progress_save">Сохранить</string>
+
+    <string name="ai_title">AI-нутрициолог</string>
+    <string name="ai_input_hint">Спроси про рацион, воду или цель</string>
+    <string name="ai_send">Отправить</string>
+    <string name="ai_you">Ты</string>
+
+    <!-- Generic -->
+    <string name="close">Закрыть</string>
+</resources>
