@@ -58,7 +58,6 @@ import app.calsnap.android.data.model.FoodAnalysisResult
 import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
 import app.calsnap.android.presentation.components.CalSnapIconTile
-import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
@@ -201,29 +200,36 @@ private fun AddTabs(selected: AddFoodViewModel.Tab, onSelect: (AddFoodViewModel.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.76f))
-            .padding(5.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         AddFoodViewModel.Tab.entries.forEach { tab ->
-            CalSnapPill(
-                text = when (tab) {
+            val isSelected = selected == tab
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent)
+                    .calSnapClickable(pressedScale = 0.93f, onClick = { onSelect(tab) }),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = when (tab) {
                     AddFoodViewModel.Tab.PHOTO -> stringResource(R.string.add_tab_photo)
                     AddFoodViewModel.Tab.TEXT -> stringResource(R.string.add_tab_text)
                     AddFoodViewModel.Tab.BARCODE -> stringResource(R.string.add_tab_barcode)
                     AddFoodViewModel.Tab.FAVOURITES -> stringResource(R.string.add_tab_favourites)
-                },
-                icon = when (tab) {
-                    AddFoodViewModel.Tab.PHOTO -> "📸"
-                    AddFoodViewModel.Tab.TEXT -> "✨"
-                    AddFoodViewModel.Tab.BARCODE -> "🏷️"
-                    AddFoodViewModel.Tab.FAVOURITES -> "⭐"
-                },
-                selected = selected == tab,
-                onClick = { onSelect(tab) },
-                modifier = Modifier.weight(1f),
-            )
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -467,10 +473,6 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConf
             }
         }
         Spacer(Modifier.height(16.dp))
-        CalSnapSecondaryButton(onClick = onConfirmFavourite, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.add_save_favourite))
-        }
-        Spacer(Modifier.height(10.dp))
         Text("${result.calories}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
         Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))
@@ -480,6 +482,10 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConf
             MacroPill("Ж", result.fat, MacroFat, Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
+        CalSnapSecondaryButton(onClick = onConfirmFavourite, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.add_save_favourite))
+        }
+        Spacer(Modifier.height(10.dp))
         CalSnapPrimaryButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.add_confirm_add))
         }

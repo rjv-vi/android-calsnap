@@ -11,17 +11,17 @@ import androidx.compose.ui.unit.sp
 // small; DM Sans is available on Android 13+ via system fallback and looks
 // close to Roboto at the weights we use.
 val CalSnapTypography = Typography(
-    displayLarge = TextStyle(fontWeight = FontWeight.Black,   fontSize = 56.sp, letterSpacing = (-1).sp),
-    displayMedium= TextStyle(fontWeight = FontWeight.Black,   fontSize = 44.sp),
-    displaySmall = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 34.sp),
+    displayLarge = TextStyle(fontWeight = FontWeight.Black,   fontSize = 58.sp, letterSpacing = (-4).sp),
+    displayMedium= TextStyle(fontWeight = FontWeight.Black,   fontSize = 52.sp, letterSpacing = (-3).sp),
+    displaySmall = TextStyle(fontWeight = FontWeight.Black, fontSize = 34.sp, letterSpacing = (-1.4).sp),
 
-    headlineLarge  = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 30.sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 24.sp),
-    headlineSmall  = TextStyle(fontWeight = FontWeight.Bold,      fontSize = 20.sp),
+    headlineLarge  = TextStyle(fontWeight = FontWeight.Black, fontSize = 32.sp, letterSpacing = (-1.8).sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Black, fontSize = 24.sp, letterSpacing = (-0.8).sp),
+    headlineSmall  = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, letterSpacing = (-0.4).sp),
 
-    titleLarge  = TextStyle(fontWeight = FontWeight.Bold,     fontSize = 20.sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, letterSpacing = 0.sp),
-    titleSmall  = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, letterSpacing = 0.sp),
+    titleLarge  = TextStyle(fontWeight = FontWeight.Black, fontSize = 22.sp, letterSpacing = (-0.8).sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = (-0.2).sp),
+    titleSmall  = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = (-0.1).sp),
 
     bodyLarge  = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),

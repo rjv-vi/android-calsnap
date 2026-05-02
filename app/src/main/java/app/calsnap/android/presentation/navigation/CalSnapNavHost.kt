@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -84,7 +85,8 @@ fun CalSnapNavHost(
         ModalBottomSheet(
             onDismissRequest = { showAddSheet = false },
             sheetState = addSheetState,
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            scrimColor = Color.Black.copy(alpha = 0.42f),
             tonalElevation = 0.dp,
             shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
         ) {

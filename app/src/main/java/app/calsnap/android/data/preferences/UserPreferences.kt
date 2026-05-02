@@ -1,8 +1,10 @@
 package app.calsnap.android.data.preferences
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -10,7 +12,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import app.calsnap.android.data.model.UserProfile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,10 +53,15 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         val GEMINI_MODEL= stringPreferencesKey("gemini_model")
     }
 
-    val onboardingCompleted: Flow<Boolean> =
-        context.prefsDataStore.data.map { it[Keys.ONBOARDING_COMPLETED] ?: false }
+    private val data: Flow<Preferences> = context.prefsDataStore.data.catch { error ->
+        if (error is CancellationException) throw error
+        emit(emptyPreferences())
+    }
 
-    val profile: Flow<UserProfile?> = context.prefsDataStore.data.map { prefs ->
+    val onboardingCompleted: Flow<Boolean> =
+        data.map { it[Keys.ONBOARDING_COMPLETED] ?: false }
+
+    val profile: Flow<UserProfile?> = data.map { prefs ->
         val name = prefs[Keys.NAME] ?: return@map null
         UserProfile(
             name        = name,
@@ -94,19 +103,19 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     }
 
     val darkTheme: Flow<Boolean?> =
-        context.prefsDataStore.data.map { it[Keys.DARK_THEME] }
+        data.map { it[Keys.DARK_THEME] }
 
     val language: Flow<String> =
-        context.prefsDataStore.data.map { it[Keys.LANGUAGE] ?: "ru" }
+        data.map { it[Keys.LANGUAGE] ?: "ru" }
 
     val soundOn: Flow<Boolean> =
-        context.prefsDataStore.data.map { it[Keys.SOUND_ON] ?: true }
+        data.map { it[Keys.SOUND_ON] ?: true }
 
     val hapticOn: Flow<Boolean> =
-        context.prefsDataStore.data.map { it[Keys.HAPTIC_ON] ?: true }
+        data.map { it[Keys.HAPTIC_ON] ?: true }
 
     val geminiModel: Flow<String> =
-        context.prefsDataStore.data.map { it[Keys.GEMINI_MODEL] ?: "gemini-2.0-flash-lite" }
+        data.map { it[Keys.GEMINI_MODEL] ?: "gemini-2.0-flash-lite" }
 
     suspend fun setDarkTheme(on: Boolean?) = context.prefsDataStore.edit {
         if (on == null) it.remove(Keys.DARK_THEME) else it[Keys.DARK_THEME] = on

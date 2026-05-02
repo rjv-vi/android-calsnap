@@ -62,7 +62,7 @@ class AppBootState @Inject constructor(userRepository: UserRepository) {
 
     init {
         scope.launch {
-            val completed = userRepository.onboardingCompleted.first()
+            val completed = runCatching { userRepository.onboardingCompleted.first() }.getOrDefault(false)
             startDestination.value = if (completed) Screen.Home.route else Screen.Onboarding.route
             bootResolved.value = true
         }

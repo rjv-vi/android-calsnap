@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.calsnap.android.data.database.entity.FoodLogEntity
 import app.calsnap.android.data.model.UserProfile
+import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.repository.FoodLogRepository
 import app.calsnap.android.data.repository.UserRepository
 import app.calsnap.android.data.repository.WaterRepository
@@ -25,6 +26,7 @@ class HomeViewModel @Inject constructor(
     userRepository: UserRepository,
     logRepository: FoodLogRepository,
     waterRepository: WaterRepository,
+    keyStore: SecureKeyStore,
 ) : ViewModel() {
 
     data class UiState(
@@ -38,6 +40,7 @@ class HomeViewModel @Inject constructor(
         val totalFat: Float = 0f,
         val waterMl: Int = 0,
         val waterGoalMl: Int = 2000,
+        val hasApiKey: Boolean = true,
     )
 
     data class CalendarDay(
@@ -74,6 +77,7 @@ class HomeViewModel @Inject constructor(
             totalFat      = entries.fold(0f) { acc, e -> acc + e.fat },
             waterMl       = water.sumOf { it.milliliters },
             waterGoalMl   = waterGoal,
+            hasApiKey     = keyStore.hasGeminiKey(),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, UiState())
 

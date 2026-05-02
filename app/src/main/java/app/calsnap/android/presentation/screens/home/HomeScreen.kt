@@ -79,17 +79,39 @@ fun HomeScreen(
         ) {
             AnimatedSection(0) { HomeHeader(ui) }
             AnimatedSection(1) { CalendarStrip(ui.calendarDays, ui.selectedDay, viewModel::selectDay) }
-            AnimatedSection(2) { CalorieHeroCard(eaten = ui.totalCalories, goal = goal, onAddFood = onAddFood) }
-            AnimatedSection(3) {
+            if (!ui.hasApiKey) {
+                AnimatedSection(2) { ApiMissingBar() }
+            }
+            AnimatedSection(3) { CalorieHeroCard(eaten = ui.totalCalories, goal = goal) }
+            AnimatedSection(4) {
                 MacroRow(
                     proteinEaten = ui.totalProtein, proteinGoal = ui.profile?.proteinGoal ?: 100,
                     carbsEaten = ui.totalCarbs, carbsGoal = ui.profile?.carbsGoal ?: 250,
                     fatEaten = ui.totalFat, fatGoal = ui.profile?.fatGoal ?: 60,
                 )
             }
-            AnimatedSection(4) { WaterMiniCard(ui.waterMl, ui.waterGoalMl) }
-            AnimatedSection(5) { TodayCard(ui, onAddFood) }
+            AnimatedSection(5) { WaterMiniCard(ui.waterMl, ui.waterGoalMl) }
+            AnimatedSection(6) { TodayCard(ui, onAddFood) }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ApiMissingBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0x1AB45309))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("🔑", style = MaterialTheme.typography.titleLarge)
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.api_key_needed_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = Color(0xFFB45309))
+            Text(stringResource(R.string.api_key_needed_sub), style = MaterialTheme.typography.bodySmall, color = Color(0x99B45309), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -118,11 +140,24 @@ private fun HomeHeader(ui: HomeViewModel.UiState) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        CalSnapPill(
-            text = if (ui.entries.isEmpty()) "0 ${stringResource(R.string.unit_kcal)}" else "${ui.totalCalories} ${stringResource(R.string.unit_kcal)}",
-            selected = true,
-            icon = "🔥",
-        )
+        StreakPill(ui.calendarDays)
+    }
+}
+
+@Composable
+private fun StreakPill(days: List<HomeViewModel.CalendarDay>) {
+    val streak = days.reversed().takeWhile { it.hasLog }.count()
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(CalSnapStreak.copy(alpha = 0.10f))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text("🔥", style = MaterialTheme.typography.titleSmall)
+        Text("$streak", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = CalSnapStreak)
+        Text(stringResource(R.string.progress_days), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = CalSnapStreak.copy(alpha = 0.78f))
     }
 }
 
@@ -145,7 +180,7 @@ private fun CalendarStrip(days: List<HomeViewModel.CalendarDay>, selected: Local
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         days.forEach { day ->
             val isSelected = day.date == selected
@@ -156,32 +191,43 @@ private fun CalendarStrip(days: List<HomeViewModel.CalendarDay>, selected: Local
 
 @Composable
 private fun CalendarDayChip(day: HomeViewModel.CalendarDay, selected: Boolean, onClick: () -> Unit) {
+    val today = day.date == LocalDate.now()
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(22.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
-            .calSnapClickable(pressedScale = 0.90f, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clip(RoundedCornerShape(18.dp))
+            .calSnapClickable(pressedScale = 0.86f, onClick = onClick)
+            .padding(horizontal = 5.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text(
             text = day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2).uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f),
             fontWeight = FontWeight.Black,
         )
         Box(
             modifier = Modifier
                 .size(34.dp)
                 .clip(RoundedCornerShape(17.dp))
-                .background(if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.13f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)),
+                .background(
+                    when {
+                        today -> MaterialTheme.colorScheme.onSurface
+                        selected -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f)
+                        day.hasLog -> Color(0x1A16A34A)
+                        else -> Color.Transparent
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = day.date.dayOfMonth.toString(),
                 style = MaterialTheme.typography.titleSmall,
-                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                color = when {
+                    today -> MaterialTheme.colorScheme.background
+                    day.hasLog -> Color(0xFF16A34A)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 fontWeight = FontWeight.Black,
             )
         }
@@ -191,8 +237,8 @@ private fun CalendarDayChip(day: HomeViewModel.CalendarDay, selected: Boolean, o
                 .clip(RoundedCornerShape(99.dp))
                 .background(
                     when {
-                        selected -> CalSnapStreak
-                        day.hasLog -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.52f)
+                        day.hasLog -> Color(0xFF16A34A)
+                        selected -> MaterialTheme.colorScheme.onSurface
                         else -> Color.Transparent
                     },
                 ),
@@ -201,20 +247,19 @@ private fun CalendarDayChip(day: HomeViewModel.CalendarDay, selected: Boolean, o
 }
 
 @Composable
-private fun CalorieHeroCard(eaten: Int, goal: Int, onAddFood: () -> Unit) {
+private fun CalorieHeroCard(eaten: Int, goal: Int) {
     val remaining = goal - eaten
     CalSnapCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(34.dp),
-        padding = PaddingValues(20.dp),
-        elevation = 20.dp,
+        shape = RoundedCornerShape(36.dp),
+        padding = PaddingValues(22.dp),
+        elevation = 14.dp,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CalorieRing(eaten = eaten, goal = goal)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = stringResource(R.string.home_calories_eaten_label),
@@ -223,12 +268,12 @@ private fun CalorieHeroCard(eaten: Int, goal: Int, onAddFood: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                 )
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$eaten", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black)
+                    Text("$eaten", style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Black)
                     Text(
                         " / $goal",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        modifier = Modifier.padding(bottom = 10.dp),
                     )
                 }
                 CalSnapPill(
@@ -238,10 +283,7 @@ private fun CalorieHeroCard(eaten: Int, goal: Int, onAddFood: () -> Unit) {
                     icon = if (remaining >= 0) "✓" else "!",
                 )
             }
-        }
-        Spacer(Modifier.height(18.dp))
-        CalSnapPrimaryButton(onClick = onAddFood, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.home_add_food))
+            CalorieRing(eaten = eaten, goal = goal)
         }
     }
 }
@@ -256,16 +298,16 @@ private fun CalorieRing(eaten: Int, goal: Int) {
     )
     val track = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
     val primary = if (eaten <= goal) CalSnapStreak else MaterialTheme.colorScheme.error
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(122.dp)) {
-        Canvas(modifier = Modifier.size(122.dp)) {
-            val stroke = 12.dp.toPx()
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(104.dp)) {
+        Canvas(modifier = Modifier.size(104.dp)) {
+            val stroke = 10.dp.toPx()
             val ringSize = Size(size.width - stroke, size.height - stroke)
             val topLeft = Offset(stroke / 2, stroke / 2)
             drawArc(track, -90f, 360f, false, topLeft, ringSize, style = Stroke(stroke, cap = StrokeCap.Round))
             drawArc(primary, -90f, 360f * progress, false, topLeft, ringSize, style = Stroke(stroke, cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
             Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -325,9 +367,12 @@ private fun MacroRow(
 private fun MacroTile(label: String, value: Float, goal: Float, color: Color, modifier: Modifier = Modifier) {
     CalSnapCard(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(18.dp),
         padding = PaddingValues(12.dp),
-        elevation = 8.dp,
+        elevation = 4.dp,
+        containerBrush = Brush.verticalGradient(
+            listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f), MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)),
+        ),
     ) {
         Box(Modifier.size(11.dp).clip(RoundedCornerShape(99.dp)).background(color))
         Spacer(Modifier.height(9.dp))
@@ -347,9 +392,9 @@ private fun MacroTile(label: String, value: Float, goal: Float, color: Color, mo
 private fun TodayCard(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
     CalSnapCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        padding = PaddingValues(16.dp),
-        elevation = 14.dp,
+        shape = RoundedCornerShape(28.dp),
+        padding = PaddingValues(14.dp),
+        elevation = 8.dp,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -439,8 +484,8 @@ private fun FoodRow(entry: FoodLogEntity) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(CalSnapStreak.copy(alpha = 0.11f)),
+                .clip(RoundedCornerShape(13.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)),
             contentAlignment = Alignment.Center,
         ) {
             Text(foodEmoji(entry.foodName))

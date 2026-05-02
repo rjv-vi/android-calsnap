@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.calsnap.android.R
 import app.calsnap.android.presentation.navigation.Screen
 import app.calsnap.android.ui.theme.CalSnapInk
@@ -60,18 +62,18 @@ fun CalSnapBottomBar(
         BottomItem(Screen.Settings.route, stringResource(R.string.nav_settings), Icons.Default.Settings),
     )
     Surface(
-        modifier = modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-        shape = RoundedCornerShape(32.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(0.dp),
         tonalElevation = 0.dp,
-        shadowElevation = 18.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-        border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
+        shadowElevation = 10.dp,
+        color = MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .padding(horizontal = 8.dp, vertical = 7.dp),
+                .height(66.dp)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -108,22 +110,22 @@ private fun CalSnapNavItem(
         label = "navColor",
     )
     val bg by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.90f) else Color.Transparent,
+        targetValue = if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.085f) else Color.Transparent,
         label = "navBg",
     )
     val pillWidth by animateDpAsState(
         targetValue = if (selected) 48.dp else 40.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "navPillWidth",
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.08f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "navScale",
     )
     Column(
         modifier = modifier
-            .calSnapClickable(pressedScale = 0.90f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
             .padding(horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -131,7 +133,7 @@ private fun CalSnapNavItem(
         Box(
             modifier = Modifier
                 .size(width = pillWidth, height = 34.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .background(bg),
             contentAlignment = Alignment.Center,
         ) {
@@ -147,10 +149,17 @@ private fun CalSnapNavItem(
         }
         Text(
             text = item.label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
             maxLines = 1,
+        )
+        Spacer(Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent),
         )
     }
 }
@@ -169,7 +178,7 @@ private fun CalSnapAddNavItem(
     )
     Column(
         modifier = modifier
-            .calSnapClickable(pressedScale = 0.82f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.80f, onClick = onClick)
             .padding(horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -181,11 +190,11 @@ private fun CalSnapAddNavItem(
                     scaleY = scale
                     rotationZ = if (selected) 45f else 0f
                 }
-                .size(50.dp)
+                .size(48.dp)
                 .shadow(14.dp, CircleShape, clip = false)
                 .clip(CircleShape)
                 .background(Brush.linearGradient(listOf(CalSnapInkSoft, CalSnapInk)))
-                .border(BorderStroke(0.7.dp, Color.White.copy(alpha = 0.12f)), CircleShape),
+                .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.14f)), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
