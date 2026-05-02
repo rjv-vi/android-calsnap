@@ -22,7 +22,7 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext ctx: Context): CalSnapDatabase =
         Room.databaseBuilder(ctx, CalSnapDatabase::class.java, CalSnapDatabase.NAME)
             .addMigrations(CalSnapMigrations.MIGRATION_1_2)
-            .fallbackToDestructiveMigration(true)
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides fun provideFoodLogDao(db: CalSnapDatabase): FoodLogDao = db.foodLogDao()
