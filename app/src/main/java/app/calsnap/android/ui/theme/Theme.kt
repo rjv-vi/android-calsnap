@@ -20,39 +20,43 @@ import androidx.core.view.WindowCompat
 // (or if we decide to pin the brand orange in some contexts). Otherwise we
 // prefer wallpaper-derived palettes via Android 12+ `dynamicColorScheme`.
 private val LightColors = lightColorScheme(
-    primary            = CalSnapOrange,
-    onPrimary          = Color.White,
-    primaryContainer   = CalSnapOrangeSoft,
-    onPrimaryContainer = CalSnapOrangeDark,
-    secondary          = CalSnapOrangeDark,
+    primary            = CalSnapInk,
+    onPrimary          = LightBg,
+    primaryContainer   = Color(0xFFE8E4DC),
+    onPrimaryContainer = CalSnapInk,
+    secondary          = CalSnapStreak,
     onSecondary        = Color.White,
     background         = LightBg,
     onBackground       = LightOnBg,
     surface            = LightSurface,
     onSurface          = LightOnBg,
-    surfaceVariant     = Color(0xFFE8E4DC),
+    surfaceVariant     = CalSnapWarmSurface2,
     onSurfaceVariant   = LightOnBgMuted,
-    outline            = Color(0xFFCFCABF),
-    error              = Color(0xFFE14B4B),
+    outline            = Color(0x24141210),
+    error              = Color(0xFFC62626),
     onError            = Color.White,
+    errorContainer     = Color(0xFFFBE5E5),
+    onErrorContainer   = Color(0xFF7C1717),
 )
 
 private val DarkColors = darkColorScheme(
-    primary            = CalSnapOrangeLight,
-    onPrimary          = Color(0xFF2A1608),
-    primaryContainer   = CalSnapOrangeDark,
-    onPrimaryContainer = CalSnapOrangeSoft,
-    secondary          = CalSnapOrange,
-    onSecondary        = Color.White,
+    primary            = DarkOnBg,
+    onPrimary          = DarkBg,
+    primaryContainer   = Color(0xFF2C2825),
+    onPrimaryContainer = DarkOnBg,
+    secondary          = CalSnapStreak,
+    onSecondary        = Color(0xFF2A1608),
     background         = DarkBg,
     onBackground       = DarkOnBg,
     surface            = DarkSurface,
     onSurface          = DarkOnBg,
     surfaceVariant     = Color(0xFF2A2822),
     onSurfaceVariant   = DarkOnBgMuted,
-    outline            = Color(0xFF4A463E),
-    error              = Color(0xFFFF6B6B),
+    outline            = Color(0x24F4F2EE),
+    error              = Color(0xFFE03535),
     onError            = Color(0xFF3A0A0A),
+    errorContainer     = Color(0xFF3A1515),
+    onErrorContainer   = Color(0xFFFFD6D6),
 )
 
 @Composable
@@ -61,7 +65,7 @@ fun CalSnapTheme(
     // Dynamic Material You colors are the default on Android 12+; minSdk 33
     // guarantees availability, so we default to true. Users who prefer the
     // hard-brand look can flip this in Settings (wired up in v1.1).
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {

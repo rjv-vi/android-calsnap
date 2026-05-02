@@ -10,6 +10,12 @@ val CalSnapOrange       = Color(0xFFFF7A30)
 val CalSnapOrangeLight  = Color(0xFFFF9A5C)
 val CalSnapOrangeDark   = Color(0xFFCC5F1C)
 val CalSnapOrangeSoft   = Color(0xFFFFE8DC)
+val CalSnapInk          = Color(0xFF141210)
+val CalSnapInkSoft      = Color(0xFF2A2622)
+val CalSnapWarmBg       = Color(0xFFF2F0EB)
+val CalSnapWarmSurface  = Color(0xFFFFFFFF)
+val CalSnapWarmSurface2 = Color(0xFFF7F5F1)
+val CalSnapStreak       = Color(0xFFFF5500)
 
 // ─── Macro chips ────────────────────────────────────────────────────────────
 val MacroProtein = Color(0xFFE85D5D) // Б
@@ -18,10 +24,10 @@ val MacroFat     = Color(0xFFFACC15) // Ж
 val MacroWater   = Color(0xFF3B82F6)
 
 // ─── Surfaces (light) ───────────────────────────────────────────────────────
-val LightBg      = Color(0xFFF2F0EB)
-val LightSurface = Color(0xFFFFFFFF)
-val LightOnBg    = Color(0xFF1C1A16)
-val LightOnBgMuted = Color(0xFF7B7469)
+val LightBg      = CalSnapWarmBg
+val LightSurface = CalSnapWarmSurface
+val LightOnBg    = CalSnapInk
+val LightOnBgMuted = Color(0x8A141210)
 
 // ─── Surfaces (dark) ────────────────────────────────────────────────────────
 val DarkBg       = Color(0xFF0F0E0C)

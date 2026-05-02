@@ -5,11 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.repository.UserRepository
 import app.calsnap.android.presentation.navigation.CalSnapNavHost
 import app.calsnap.android.presentation.navigation.Screen
@@ -29,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
     // v1 stub — real gate will come from UserRepository (onboarding completed?).
     @Inject lateinit var appState: AppBootState
+    @Inject lateinit var prefs: UserPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -41,9 +45,11 @@ class MainActivity : ComponentActivity() {
         splash.setKeepOnScreenCondition { !appState.bootResolved.value }
 
         setContent {
-            CalSnapTheme {
+            val darkOverride by prefs.darkTheme.collectAsState(initial = null)
+            val systemDark = isSystemInDarkTheme()
+            CalSnapTheme(darkTheme = darkOverride ?: systemDark, dynamicColor = false) {
                 val start by appState.startDestination.collectAsState()
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     start?.let { CalSnapNavHost(startDestination = it) }
                 }
             }

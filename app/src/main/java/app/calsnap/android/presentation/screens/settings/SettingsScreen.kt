@@ -1,5 +1,8 @@
 package app.calsnap.android.presentation.screens.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,18 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,72 +25,110 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
 import app.calsnap.android.data.remote.GeminiClient
+import app.calsnap.android.presentation.components.AnimatedSection
+import app.calsnap.android.presentation.components.CalSnapCard
+import app.calsnap.android.presentation.components.CalSnapIconTile
+import app.calsnap.android.presentation.components.CalSnapPill
+import app.calsnap.android.presentation.components.CalSnapPrimaryButton
+import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.CalSnapSecondaryButton
+import app.calsnap.android.presentation.components.CalSnapTextField
+import app.calsnap.android.presentation.components.calSnapClickable
+import app.calsnap.android.ui.theme.CalSnapStreak
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
-    ) { innerPadding ->
+    CalSnapScreen {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SectionLabel(stringResource(R.string.settings_section_ai))
-            ApiKeyCard(
-                hasKey = ui.hasGeminiKey,
-                onSave = viewModel::saveGeminiKey,
-                onClear = viewModel::clearGeminiKey,
-            )
-            Spacer(Modifier.height(12.dp))
-            ModelCard(
-                hasKey = ui.hasGeminiKey,
-                selectedModel = ui.selectedModel,
-                models = ui.models,
-                loading = ui.modelsLoading,
-                error = ui.modelsError,
-                onLoad = viewModel::loadGeminiModels,
-                onSelect = viewModel::selectGeminiModel,
-            )
-
-            Spacer(Modifier.height(24.dp))
-            SectionLabel(stringResource(R.string.settings_section_appearance))
-            ThemeRow(
-                darkTheme = ui.darkTheme,
-                onChange = viewModel::setDarkTheme,
-            )
-            LanguageRow(
-                current = ui.language,
-                onChange = viewModel::setLanguage,
-            )
-
-            Spacer(Modifier.height(32.dp))
+            AnimatedSection(0) { SettingsHeader() }
+            AnimatedSection(1) {
+                SectionLabel(stringResource(R.string.settings_section_ai))
+                ApiKeyCard(
+                    hasKey = ui.hasGeminiKey,
+                    onSave = viewModel::saveGeminiKey,
+                    onClear = viewModel::clearGeminiKey,
+                )
+            }
+            AnimatedSection(2) {
+                ModelCard(
+                    hasKey = ui.hasGeminiKey,
+                    selectedModel = ui.selectedModel,
+                    models = ui.models,
+                    loading = ui.modelsLoading,
+                    error = ui.modelsError,
+                    onLoad = viewModel::loadGeminiModels,
+                    onSelect = viewModel::selectGeminiModel,
+                )
+            }
+            AnimatedSection(3) {
+                SectionLabel(stringResource(R.string.settings_section_appearance))
+                ThemeRow(
+                    darkTheme = ui.darkTheme,
+                    onChange = viewModel::setDarkTheme,
+                )
+                Spacer(Modifier.height(10.dp))
+                LanguageRow(
+                    current = ui.language,
+                    onChange = viewModel::setLanguage,
+                )
+            }
             Text(
                 text = stringResource(R.string.settings_footer_v),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
             )
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun SettingsHeader() {
+    CalSnapCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        padding = PaddingValues(16.dp),
+        containerBrush = Brush.verticalGradient(listOf(CalSnapStreak.copy(alpha = 0.13f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))),
+        borderColor = CalSnapStreak.copy(alpha = 0.18f),
+        elevation = 18.dp,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = "⚙️", size = 54.dp, background = CalSnapStreak.copy(alpha = 0.11f))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                Text(stringResource(R.string.settings_footer_v), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
 
 @Composable private fun SectionLabel(text: String) {
     Text(
-        text = text,
+        text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 8.dp),
+        fontWeight = FontWeight.Black,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
     )
 }
 
@@ -104,37 +139,38 @@ private fun ApiKeyCard(
     onClear: () -> Unit,
 ) {
     var input by remember { mutableStateOf("") }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(
-                    if (hasKey) R.string.settings_api_set else R.string.settings_api_not_set,
-                ),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it },
-                label = { Text(stringResource(R.string.settings_api_hint)) },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { onSave(input); input = "" },
-                enabled = input.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.settings_api_save))
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(16.dp), elevation = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = "🔑", size = 48.dp)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(if (hasKey) R.string.settings_api_set else R.string.settings_api_not_set),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(stringResource(R.string.api_key_needed_sub), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            if (hasKey) {
-                OutlinedButton(
-                    onClick = onClear,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.settings_api_clear))
-                }
+        }
+        Spacer(Modifier.height(12.dp))
+        CalSnapTextField(
+            value = input,
+            onValueChange = { input = it },
+            label = stringResource(R.string.settings_api_hint),
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        CalSnapPrimaryButton(
+            onClick = { onSave(input); input = "" },
+            enabled = input.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.settings_api_save))
+        }
+        if (hasKey) {
+            Spacer(Modifier.height(8.dp))
+            CalSnapSecondaryButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_api_clear))
             }
         }
     }
@@ -150,38 +186,28 @@ private fun ModelCard(
     onLoad: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.titleSmall)
-            Text(selectedModel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onLoad,
-                enabled = hasKey && !loading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (loading) CircularProgressIndicator() else Text(stringResource(R.string.settings_model_load))
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(16.dp), elevation = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = "✨", size = 48.dp)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(selectedModel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            error?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            if (models.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Column {
-                    models.take(12).forEach { model ->
-                        FilterChip(
-                            selected = model.id == selectedModel,
-                            onClick = { onSelect(model.id) },
-                            label = {
-                                Column {
-                                    Text(model.name)
-                                    Text(model.id, style = MaterialTheme.typography.labelSmall)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+        }
+        Spacer(Modifier.height(12.dp))
+        CalSnapSecondaryButton(onClick = onLoad, enabled = hasKey && !loading, modifier = Modifier.fillMaxWidth()) {
+            if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 3.dp, color = CalSnapStreak)
+            else Text(stringResource(R.string.settings_model_load))
+        }
+        error?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+        }
+        if (models.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                models.take(12).forEach { model ->
+                    ModelRow(model, selected = model.id == selectedModel, onSelect = { onSelect(model.id) })
                 }
             }
         }
@@ -189,40 +215,54 @@ private fun ModelCard(
 }
 
 @Composable
+private fun ModelRow(model: GeminiClient.GeminiModelInfo, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f))
+            .calSnapClickable(pressedScale = 0.97f, onClick = onSelect)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(if (selected) "✓" else "○", color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
+        Column(Modifier.weight(1f)) {
+            Text(model.name, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+            Text(model.id, color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
 private fun ThemeRow(darkTheme: Boolean?, onChange: (Boolean?) -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_dark_theme),
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = darkTheme == true,
-                onCheckedChange = { on -> onChange(if (on) true else null) },
-            )
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), padding = PaddingValues(16.dp), elevation = 10.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = if (darkTheme == true) "🌙" else "☀️", size = 46.dp, background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_dark_theme), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                Text(if (darkTheme == true) "Dark" else "System / Light", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = darkTheme == true, onCheckedChange = { on -> onChange(if (on) true else null) })
         }
     }
 }
 
 @Composable
 private fun LanguageRow(current: String, onChange: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_language),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(
-                onClick = { onChange(if (current == "ru") "en" else "ru") },
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), padding = PaddingValues(16.dp), elevation = 10.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = "🌐", size = 46.dp, background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
+            Text(stringResource(R.string.settings_language), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .calSnapClickable { onChange(if (current == "ru") "en" else "ru") }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(current.uppercase())
+                Text(current.uppercase(), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
             }
         }
     }

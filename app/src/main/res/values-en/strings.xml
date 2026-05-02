@@ -16,6 +16,10 @@
     <string name="home_section_today">Today</string>
     <string name="home_empty_hint">Tap “Add” to log your first meal</string>
     <string name="home_water_title">Water today</string>
+    <string name="meal_breakfast">Breakfast</string>
+    <string name="meal_lunch">Lunch</string>
+    <string name="meal_snack">Snack</string>
+    <string name="meal_dinner">Dinner</string>
 
     <string name="macro_protein">Protein</string>
     <string name="macro_carbs">Carbs</string>
@@ -114,6 +118,9 @@
     <string name="ai_send">Send</string>
     <string name="ai_you">You</string>
     <string name="ai_typing">CalSnap is thinking…</string>
+    <string name="ai_prompt_improve">What to improve?</string>
+    <string name="ai_prompt_water">How much water?</string>
+    <string name="ai_prompt_dinner">Dinner idea</string>
 
     <string name="close">Close</string>
 </resources>

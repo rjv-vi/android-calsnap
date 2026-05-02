@@ -19,6 +19,10 @@
     <string name="home_section_today">Сегодня</string>
     <string name="home_empty_hint">Нажми «Добавить» чтобы записать первый приём пищи</string>
     <string name="home_water_title">Вода сегодня</string>
+    <string name="meal_breakfast">Завтрак</string>
+    <string name="meal_lunch">Обед</string>
+    <string name="meal_snack">Перекус</string>
+    <string name="meal_dinner">Ужин</string>
 
     <!-- Macros -->
     <string name="macro_protein">Белки</string>
@@ -123,6 +127,9 @@
     <string name="ai_send">Отправить</string>
     <string name="ai_you">Ты</string>
     <string name="ai_typing">CalSnap думает…</string>
+    <string name="ai_prompt_improve">Что улучшить?</string>
+    <string name="ai_prompt_water">Сколько воды?</string>
+    <string name="ai_prompt_dinner">Идея ужина</string>
 
     <!-- Generic -->
     <string name="close">Закрыть</string>

@@ -1,7 +1,16 @@
 package app.calsnap.android.presentation.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +39,7 @@ fun CalSnapNavHost(
     val showBottomBar = currentRoute in Screen.bottomBar.map { it.route }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBottomBar) {
                 CalSnapBottomBar(
@@ -65,6 +75,10 @@ private fun CalSnapGraph(
         navController    = navController,
         startDestination = startDestination,
         modifier         = Modifier.padding(contentPadding),
+        enterTransition  = { calSnapEnterTransition() },
+        exitTransition   = { calSnapExitTransition() },
+        popEnterTransition = { calSnapEnterTransition() },
+        popExitTransition  = { calSnapExitTransition() },
     ) {
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
@@ -92,3 +106,11 @@ private fun CalSnapGraph(
         }
     }
 }
+
+private fun calSnapEnterTransition(): EnterTransition =
+    fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+        slideInVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 18 }
+
+private fun calSnapExitTransition(): ExitTransition =
+    fadeOut(animationSpec = tween(110, easing = FastOutSlowInEasing)) +
+        slideOutVertically(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 24 }
