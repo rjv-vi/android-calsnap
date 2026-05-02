@@ -62,7 +62,6 @@ import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 fun OnboardingScreen(
     onFinished: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
@@ -344,6 +343,7 @@ private fun StepGoal(draft: OnboardingViewModel.Draft, viewModel: OnboardingView
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun StepPreferences(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
     val prefOptions = listOf(
         Choice("no_meat", "🚫🥩", stringResource(R.string.pref_no_meat)),
