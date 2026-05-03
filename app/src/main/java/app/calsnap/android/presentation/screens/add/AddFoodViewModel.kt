@@ -10,6 +10,7 @@ import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.data.remote.OpenFoodFactsApi
 import app.calsnap.android.data.repository.FoodLogRepository
+import app.calsnap.android.domain.FavouriteFood
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -146,9 +147,10 @@ class AddFoodViewModel @Inject constructor(
 
     fun logFavourite(entry: FoodLogEntity) {
         val now = LocalDateTime.now()
+        val favourite = FavouriteFood.normalizedServing(entry)
         viewModelScope.launch {
             foodLogRepository.add(
-                entry.copy(
+                favourite.copy(
                     id = 0,
                     loggedAt = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                     mealType = MealType.forHour(now.hour),

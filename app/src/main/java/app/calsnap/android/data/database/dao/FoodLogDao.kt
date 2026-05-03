@@ -32,17 +32,14 @@ interface FoodLogDao {
     fun observeRange(startMs: Long, endMs: Long): Flow<List<FoodLogEntity>>
 
     /** Favourites chip row on the add sheet. */
-    @Query("SELECT * FROM food_log WHERE favourite = 1 ORDER BY loggedAt DESC LIMIT 30")
+    @Query("SELECT * FROM food_log WHERE favourite = 1 ORDER BY loggedAt DESC")
     fun observeFavourites(): Flow<List<FoodLogEntity>>
+
+    @Query("SELECT * FROM food_log WHERE favourite = 1 ORDER BY loggedAt DESC")
+    suspend fun listFavourites(): List<FoodLogEntity>
 
     @Query("SELECT COALESCE(MAX(CASE WHEN id = :id AND favourite = 1 THEN 1 ELSE 0 END), 0) FROM food_log")
     suspend fun favouriteFlag(id: Long): Int
-
-    @Query("SELECT COUNT(*) FROM food_log WHERE favourite = 1 AND lower(foodName) = lower(:foodName) AND calories = :calories")
-    suspend fun countFavouritesLike(foodName: String, calories: Int): Int
-
-    @Query("UPDATE food_log SET favourite = 0 WHERE favourite = 1 AND lower(foodName) = lower(:foodName) AND calories = :calories")
-    suspend fun clearFavouritesLike(foodName: String, calories: Int)
 
     /** Aggregate totals for the streak / progress views. */
     @Query(

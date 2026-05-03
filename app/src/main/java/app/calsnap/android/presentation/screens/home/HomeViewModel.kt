@@ -9,6 +9,7 @@ import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.repository.FoodLogRepository
 import app.calsnap.android.data.repository.UserRepository
 import app.calsnap.android.data.repository.WaterRepository
+import app.calsnap.android.domain.FavouriteFood
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -179,12 +180,10 @@ class HomeViewModel @Inject constructor(
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 
     private fun List<FoodLogEntity>.withFavouriteMarkers(favourites: List<FoodLogEntity>): List<FoodLogEntity> {
-        val favouriteKeys = favourites.map { it.favouriteKey() }.toSet()
+        val favouriteKeys = favourites.map { FavouriteFood.key(it) }.toSet()
         return map { entry ->
-            val favourite = entry.favourite || entry.favouriteKey() in favouriteKeys
+            val favourite = entry.favourite || FavouriteFood.key(entry) in favouriteKeys
             if (entry.favourite == favourite) entry else entry.copy(favourite = favourite)
         }
     }
-
-    private fun FoodLogEntity.favouriteKey(): Pair<String, Int> = foodName.trim().lowercase() to calories
 }
