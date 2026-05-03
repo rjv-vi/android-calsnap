@@ -14,6 +14,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -33,6 +35,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -48,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +110,7 @@ fun Modifier.calSnapClickable(
 @Composable
 fun CalSnapScreen(
     modifier: Modifier = Modifier,
+    glow: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.25f
@@ -112,18 +120,22 @@ fun CalSnapScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .drawBehind {
-                drawCircle(
-                    color = topGlow,
-                    radius = size.maxDimension * 0.34f,
-                    center = Offset(size.width * 0.14f, size.height * 0.02f),
-                )
-                drawCircle(
-                    color = inkGlow,
-                    radius = size.maxDimension * 0.42f,
-                    center = Offset(size.width * 1.02f, size.height * 0.16f),
-                )
-            },
+            .then(
+                if (glow) {
+                    Modifier.drawBehind {
+                        drawCircle(
+                            color = topGlow,
+                            radius = size.maxDimension * 0.34f,
+                            center = Offset(size.width * 0.14f, size.height * 0.02f),
+                        )
+                        drawCircle(
+                            color = inkGlow,
+                            radius = size.maxDimension * 0.42f,
+                            center = Offset(size.width * 1.02f, size.height * 0.16f),
+                        )
+                    }
+                } else Modifier,
+            ),
         content = content,
     )
 }
@@ -548,6 +560,113 @@ fun CalSnapStepDots(
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f),
                     ),
             )
+        }
+    }
+}
+
+/**
+ * iOS-style scroll wheel picker that mirrors the PWA drum picker behaviour
+ * (`drum.js`, `ITEM_H = 44`). Uses a snapping LazyColumn so users swipe to
+ * pick values rather than tapping prev/next rows. Items further from the
+ * center fade and shrink, matching `.drum-item.sel` vs `.drum-item`.
+ */
+@Composable
+fun CalSnapWheelPicker(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    itemHeight: Dp = 44.dp,
+    visibleCount: Int = 3,
+) {
+    val safeInitial = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+    val listState: LazyListState = rememberLazyListState(initialFirstVisibleItemIndex = safeInitial)
+    val flingBehavior = rememberSnapFlingBehavior(
+        lazyListState = listState,
+        snapPosition = SnapPosition.Center,
+    )
+
+    // Keep external selectedIndex in sync with the list state once user flings
+    // settle. Using derivedStateOf so the callback only fires when the value
+    // actually changes and avoids recompose storms mid-scroll.
+    val centerIndex by remember(listState, items) {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            if (info.visibleItemsInfo.isEmpty()) {
+                safeInitial
+            } else {
+                val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                info.visibleItemsInfo.minBy {
+                    kotlin.math.abs((it.offset + it.size / 2) - viewportCenter)
+                }.index.coerceIn(0, items.lastIndex)
+            }
+        }
+    }
+    LaunchedEffect(centerIndex, items.size) {
+        if (centerIndex != selectedIndex) onSelect(centerIndex)
+    }
+    // If an outside caller jumps selection (e.g. year changed and days
+    // re-clamped), bring the wheel back to that index.
+    LaunchedEffect(selectedIndex, items.size) {
+        val target = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+        if (!listState.isScrollInProgress && target != centerIndex) {
+            listState.scrollToItem(target)
+        }
+    }
+
+    val padItems = (visibleCount - 1) / 2
+    Box(
+        modifier = modifier.height(itemHeight * visibleCount),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Subtle selection band to hint where the center row is (tinted
+        // surface + thin top/bottom separators). Kept light so the wheel
+        // still reads as "type only" like the PWA .drum-item.sel.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f))
+                .border(
+                    BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+                    RoundedCornerShape(14.dp),
+                ),
+        )
+        LazyColumn(
+            state = listState,
+            flingBehavior = flingBehavior,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item { Spacer(Modifier.height(itemHeight * padItems)) }
+            itemsIndexed(items) { index, text ->
+                val distance = kotlin.math.abs(index - centerIndex).coerceAtMost(2)
+                val alpha = when (distance) {
+                    0 -> 1f
+                    1 -> 0.48f
+                    else -> 0.22f
+                }
+                val weight = if (distance == 0) FontWeight.ExtraBold else FontWeight.SemiBold
+                val fontSize = if (distance == 0) 20.sp else 15.sp
+                val letterSpacing = if (distance == 0) (-0.3).sp else 0.sp
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text,
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = fontSize,
+                            fontWeight = weight,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                            letterSpacing = letterSpacing,
+                        ),
+                    )
+                }
+            }
+            item { Spacer(Modifier.height(itemHeight * padItems)) }
         }
     }
 }

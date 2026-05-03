@@ -39,6 +39,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,7 @@ import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapStepDots
+import app.calsnap.android.presentation.components.CalSnapWheelPicker
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 import java.time.LocalDate
@@ -95,7 +97,7 @@ fun OnboardingScreen(
         else -> true
     }
 
-    CalSnapScreen {
+    CalSnapScreen(glow = false) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -455,7 +457,21 @@ private fun DobPickerSheet(
     onConfirm: (DobParts) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var current by remember(initial) { mutableStateOf(initial) }
+    var day by remember(initial) { mutableStateOf(initial.day) }
+    var month by remember(initial) { mutableStateOf(initial.month) }
+    var year by remember(initial) { mutableStateOf(initial.year) }
+
+    // When month/year shifts to a shorter month, clamp the day so the wheel
+    // doesn't display an invalid combination.
+    LaunchedEffect(month, year) {
+        val maxD = maxDay(year, month)
+        if (day > maxD) day = maxD
+    }
+
+    val dayItems = remember(month, year) { (1..maxDay(year, month)).map { pad(it) } }
+    val monthItems = remember { (1..12).map { monthName(it) } }
+    val yearItems = remember { (maxBirthYear() downTo minBirthYear()).map { it.toString() } }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -499,7 +515,10 @@ private fun DobPickerSheet(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
                         .background(MaterialTheme.colorScheme.onSurface)
-                        .calSnapClickable(pressedScale = 0.94f) { onConfirm(current) }
+                        .calSnapClickable(pressedScale = 0.94f) {
+                            val clampedDay = day.coerceIn(1, maxDay(year, month))
+                            onConfirm(DobParts(year, month, clampedDay))
+                        }
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                 ) {
                     Text(
@@ -517,63 +536,25 @@ private fun DobPickerSheet(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            DrumColumn(
+            DobWheelColumn(
                 label = stringResource(R.string.onboarding_dob_day).uppercase(),
-                previous = pad((if (current.day == 1) maxDay(current.year, current.month) else current.day - 1)),
-                value = pad(current.day),
-                next = pad(if (current.day >= maxDay(current.year, current.month)) 1 else current.day + 1),
-                onPrevious = {
-                    current = current.copy(
-                        day = if (current.day == 1) maxDay(current.year, current.month) else current.day - 1,
-                    )
-                },
-                onNext = {
-                    current = current.copy(
-                        day = if (current.day >= maxDay(current.year, current.month)) 1 else current.day + 1,
-                    )
-                },
+                items = dayItems,
+                selectedIndex = (day - 1).coerceIn(0, dayItems.lastIndex),
+                onSelect = { idx -> day = (idx + 1).coerceIn(1, maxDay(year, month)) },
                 modifier = Modifier.weight(1f),
             )
-            DrumColumn(
+            DobWheelColumn(
                 label = stringResource(R.string.onboarding_dob_month).uppercase(),
-                previous = monthName(if (current.month == 1) 12 else current.month - 1),
-                value = monthName(current.month),
-                next = monthName(if (current.month == 12) 1 else current.month + 1),
-                onPrevious = {
-                    val nextMonth = if (current.month == 1) 12 else current.month - 1
-                    current = current.copy(
-                        month = nextMonth,
-                        day = current.day.coerceIn(1, maxDay(current.year, nextMonth)),
-                    )
-                },
-                onNext = {
-                    val nextMonth = if (current.month == 12) 1 else current.month + 1
-                    current = current.copy(
-                        month = nextMonth,
-                        day = current.day.coerceIn(1, maxDay(current.year, nextMonth)),
-                    )
-                },
+                items = monthItems,
+                selectedIndex = (month - 1).coerceIn(0, monthItems.lastIndex),
+                onSelect = { idx -> month = (idx + 1).coerceIn(1, 12) },
                 modifier = Modifier.weight(1.55f),
             )
-            DrumColumn(
+            DobWheelColumn(
                 label = stringResource(R.string.onboarding_dob_year).uppercase(),
-                previous = (if (current.year >= maxBirthYear()) minBirthYear() else current.year + 1).toString(),
-                value = current.year.toString(),
-                next = (if (current.year <= minBirthYear()) maxBirthYear() else current.year - 1).toString(),
-                onPrevious = {
-                    val nextYear = if (current.year >= maxBirthYear()) minBirthYear() else current.year + 1
-                    current = current.copy(
-                        year = nextYear,
-                        day = current.day.coerceIn(1, maxDay(nextYear, current.month)),
-                    )
-                },
-                onNext = {
-                    val nextYear = if (current.year <= minBirthYear()) maxBirthYear() else current.year - 1
-                    current = current.copy(
-                        year = nextYear,
-                        day = current.day.coerceIn(1, maxDay(nextYear, current.month)),
-                    )
-                },
+                items = yearItems,
+                selectedIndex = (maxBirthYear() - year).coerceIn(0, yearItems.lastIndex),
+                onSelect = { idx -> year = (maxBirthYear() - idx).coerceIn(minBirthYear(), maxBirthYear()) },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -581,22 +562,19 @@ private fun DobPickerSheet(
 }
 
 @Composable
-private fun DrumColumn(
+private fun DobWheelColumn(
     label: String,
-    previous: String,
-    value: String,
-    next: String,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
+    items: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f))
             .padding(horizontal = 6.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             label,
@@ -608,34 +586,13 @@ private fun DrumColumn(
             ),
         )
         Spacer(Modifier.height(6.dp))
-        DrumRow(previous, dim = true, onClick = onPrevious)
-        DrumRow(value, dim = false, onClick = {})
-        DrumRow(next, dim = true, onClick = onNext)
-    }
-}
-
-@Composable
-private fun DrumRow(text: String, dim: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (dim) Color.Transparent else MaterialTheme.colorScheme.surface,
-            )
-            .calSnapClickable(enabled = dim, pressedScale = 0.94f, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text,
-            style = TextStyle(
-                fontSize = if (dim) 14.sp else 20.sp,
-                fontWeight = if (dim) FontWeight.SemiBold else FontWeight.ExtraBold,
-                letterSpacing = if (dim) 0.sp else (-0.3).sp,
-                color = if (dim) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.48f)
-                else MaterialTheme.colorScheme.onSurface,
-            ),
+        CalSnapWheelPicker(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelect = onSelect,
+            modifier = Modifier.fillMaxWidth(),
+            itemHeight = 44.dp,
+            visibleCount = 3,
         )
     }
 }
