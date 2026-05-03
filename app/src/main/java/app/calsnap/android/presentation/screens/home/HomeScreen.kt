@@ -419,8 +419,8 @@ private fun FoodDetailSheet(
             DetailTime(entry)
             ServingControl(
                 servings = servings,
-                onMinus = { onServingsChange(max(1f, servings - 1f)) },
-                onPlus = { onServingsChange(servings + 1f) },
+                onMinus = { onServingsChange(max(0.5f, servings - 0.5f)) },
+                onPlus = { onServingsChange(servings + 0.5f) },
             )
             Row(
                 modifier = Modifier.padding(top = 14.dp),
@@ -577,7 +577,7 @@ private fun ServingControl(
         Row(verticalAlignment = Alignment.CenterVertically) {
             QuantityButton(text = "−", primary = false, onClick = onMinus)
             Text(
-                servingsDisplay.roundToInt().toString(),
+                "×${formatDecimal(servingsDisplay)}",
                 modifier = Modifier.padding(horizontal = 12.dp),
                 style = TextStyle(fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface),
                 textAlign = TextAlign.Center,
@@ -1520,7 +1520,7 @@ private fun FoodRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (entry.servings > 1f) {
+                if (entry.servings < 0.99f || entry.servings > 1.01f) {
                     Box(
                         modifier = Modifier
                             .padding(start = 5.dp)
@@ -1530,7 +1530,7 @@ private fun FoodRow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "${entry.servings.roundToInt()} ${stringResource(R.string.unit_pcs)}",
+                            "×${formatDecimal(entry.servings)}",
                             style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.background),
                         )
                     }
@@ -1726,7 +1726,9 @@ private fun foodEmoji(name: String): String {
         listOf("кофе", "чай", "вода", "сок", "молоко").any(lower::contains) -> "🥤"
         listOf("кур", "мяс", "гов", "свин", "рыб").any(lower::contains) -> "🍗"
         listOf("салат", "огур", "помид", "овощ").any(lower::contains) -> "🥗"
+        listOf("карто", "potato").any(lower::contains) -> "🥔"
         listOf("рис", "греч", "овся", "макарон").any(lower::contains) -> "🍚"
+        listOf("понч", "donut").any(lower::contains) -> "🍩"
         listOf("торт", "шокол", "печ", "морож").any(lower::contains) -> "🍰"
         else -> "🍽️"
     }

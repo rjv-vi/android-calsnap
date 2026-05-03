@@ -145,9 +145,9 @@ class AddFoodViewModel @Inject constructor(
         }
     }
 
-    fun logFavourite(entry: FoodLogEntity) {
+    fun logFavourite(entry: FoodLogEntity, multiplier: Float = 1f) {
         val now = LocalDateTime.now()
-        val favourite = FavouriteFood.normalizedServing(entry)
+        val favourite = FavouriteFood.withServingMultiplier(entry, multiplier)
         viewModelScope.launch {
             foodLogRepository.add(
                 favourite.copy(

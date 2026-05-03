@@ -28,6 +28,18 @@ object FavouriteFood {
         )
     }
 
+    fun withServingMultiplier(entry: FoodLogEntity, multiplier: Float): FoodLogEntity {
+        val base = normalizedServing(entry)
+        val safeMultiplier = multiplier.coerceIn(0.25f, 5f)
+        return base.copy(
+            servings = safeMultiplier,
+            calories = (base.calories * safeMultiplier).roundToInt().coerceAtLeast(0),
+            protein = (base.protein * safeMultiplier).coerceAtLeast(0f),
+            carbs = (base.carbs * safeMultiplier).coerceAtLeast(0f),
+            fat = (base.fat * safeMultiplier).coerceAtLeast(0f),
+        )
+    }
+
     fun same(a: FoodLogEntity, b: FoodLogEntity): Boolean = key(a) == key(b)
 
     private fun perServing(value: Float, servings: Float): Float =

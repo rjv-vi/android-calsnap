@@ -26,6 +26,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -127,13 +128,13 @@ class HomeViewModel @Inject constructor(
 
     fun updateServings(entry: FoodLogEntity, servings: Float) = viewModelScope.launch {
         val currentServings = entry.servings.takeIf { it > 0f } ?: 1f
-        val nextServings = servings.coerceAtLeast(1f)
+        val nextServings = servings.coerceIn(0.5f, 5f)
         val ratio = nextServings / currentServings
         val favourite = logRepository.isFavouriteById(entry)
         logRepository.update(
             entry.copy(
                 servings = nextServings,
-                calories = (entry.calories * ratio).toInt().coerceAtLeast(0),
+                calories = (entry.calories * ratio).roundToInt().coerceAtLeast(0),
                 protein = entry.protein * ratio,
                 carbs = entry.carbs * ratio,
                 fat = entry.fat * ratio,

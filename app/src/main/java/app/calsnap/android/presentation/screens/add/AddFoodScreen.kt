@@ -4,11 +4,15 @@ import android.graphics.ImageDecoder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -46,10 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,6 +76,8 @@ import app.calsnap.android.ui.theme.CalSnapStreak
 import app.calsnap.android.ui.theme.MacroCarbs
 import app.calsnap.android.ui.theme.MacroFat
 import app.calsnap.android.ui.theme.MacroProtein
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun AddFoodScreen(
@@ -135,8 +143,8 @@ private fun AddFoodContent(
                             AddFoodViewModel.Tab.BARCODE -> BarcodeTab(viewModel, ui.loading)
                             AddFoodViewModel.Tab.FAVOURITES -> FavouritesTab(
                                 favourites = ui.favourites,
-                                onAdd = {
-                                    viewModel.logFavourite(it)
+                                onAdd = { entry, multiplier ->
+                                    viewModel.logFavourite(entry, multiplier)
                                     onDismiss()
                                 },
                                 onRemove = viewModel::removeFavourite,
@@ -328,9 +336,10 @@ private fun TextTab(viewModel: AddFoodViewModel, loading: Boolean) {
 @Composable
 private fun FavouritesTab(
     favourites: List<FoodLogEntity>,
-    onAdd: (FoodLogEntity) -> Unit,
+    onAdd: (FoodLogEntity, Float) -> Unit,
     onRemove: (FoodLogEntity) -> Unit,
 ) {
+    var selectedId by remember(favourites) { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         TabIntro("⭐", stringResource(R.string.add_favourites_title), stringResource(R.string.add_favourites_subtitle))
         if (favourites.isEmpty()) {
@@ -350,21 +359,36 @@ private fun FavouritesTab(
             }
         } else {
             favourites.forEach { entry ->
-                FavouriteRow(entry = entry, onAdd = { onAdd(entry) }, onRemove = { onRemove(entry) })
+                val selected = selectedId == entry.id
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FavouriteRow(
+                        entry = entry,
+                        selected = selected,
+                        onAdd = { selectedId = if (selected) null else entry.id },
+                        onRemove = { onRemove(entry) },
+                    )
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = fadeIn(tween(160, easing = FastOutSlowInEasing)) + expandVertically(tween(220, easing = FastOutSlowInEasing)),
+                        exit = fadeOut(tween(120, easing = FastOutSlowInEasing)) + shrinkVertically(tween(160, easing = FastOutSlowInEasing)),
+                    ) {
+                        FavouritePortionPanel(entry = entry, onAdd = { multiplier -> onAdd(entry, multiplier) })
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun FavouriteRow(entry: FoodLogEntity, onAdd: () -> Unit, onRemove: () -> Unit) {
+private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> Unit, onRemove: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)), shape)
+            .background(if (selected) CalSnapStreak.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, if (selected) CalSnapStreak.copy(alpha = 0.34f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)), shape)
             .calSnapClickable(pressedScale = 0.98f, onClick = onAdd)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -401,18 +425,174 @@ private fun FavouriteRow(entry: FoodLogEntity, onAdd: () -> Unit, onRemove: () -
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.onSurface)
+                .background(if (selected) CalSnapStreak else MaterialTheme.colorScheme.onSurface)
                 .calSnapClickable(pressedScale = 0.94f, onClick = onAdd)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "+ ${stringResource(R.string.nav_add)}",
+                if (selected) stringResource(R.string.add_favourite_selected) else stringResource(R.string.add_favourite_choose_portion),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.background,
                 fontWeight = FontWeight.Bold,
             )
         }
+    }
+}
+
+@Composable
+private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) {
+    var multiplier by remember(entry.id) { mutableStateOf(1f) }
+    val calories by animateFloatAsState(entry.calories * multiplier, tween(260, easing = FastOutSlowInEasing), label = "favCalories")
+    val protein by animateFloatAsState(entry.protein * multiplier, tween(260, easing = FastOutSlowInEasing), label = "favProtein")
+    val carbs by animateFloatAsState(entry.carbs * multiplier, tween(260, easing = FastOutSlowInEasing), label = "favCarbs")
+    val fat by animateFloatAsState(entry.fat * multiplier, tween(260, easing = FastOutSlowInEasing), label = "favFat")
+    val options = listOf(
+        PortionOption(0.5f, "0.5×", stringResource(R.string.add_favourite_choice_less)),
+        PortionOption(1f, "1×", stringResource(R.string.add_favourite_choice_same)),
+        PortionOption(1.5f, "1.5×", stringResource(R.string.add_favourite_choice_more)),
+        PortionOption(2f, "2×", stringResource(R.string.add_favourite_choice_double)),
+    )
+    CalSnapCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(28.dp),
+        padding = PaddingValues(16.dp),
+        containerBrush = Brush.verticalGradient(
+            listOf(CalSnapStreak.copy(alpha = 0.14f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
+        ),
+        borderColor = CalSnapStreak.copy(alpha = 0.26f),
+        elevation = 10.dp,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CalSnapIconTile(icon = foodEmoji(entry.foodName), size = 52.dp, background = CalSnapStreak.copy(alpha = 0.14f))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.add_favourite_portion_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(
+                    stringResource(R.string.add_favourite_portion_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                calories.roundToInt().toString(),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                stringResource(R.string.unit_kcal),
+                modifier = Modifier.padding(bottom = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.add_favourite_selected_size, formatMultiplier(multiplier)),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 9.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                PortionOptionChip(
+                    option = option,
+                    selected = multiplier == option.multiplier,
+                    onClick = { multiplier = option.multiplier },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                stringResource(R.string.add_favourite_base_portion),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PortionStepButton("−") { multiplier = (multiplier - 0.5f).coerceAtLeast(0.5f) }
+                Text(
+                    "${formatMultiplier(multiplier)}×",
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                PortionStepButton("+") { multiplier = (multiplier + 0.5f).coerceAtMost(5f) }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MacroPill("Б", protein, MacroProtein, Modifier.weight(1f))
+            MacroPill("У", carbs, MacroCarbs, Modifier.weight(1f))
+            MacroPill("Ж", fat, MacroFat, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(14.dp))
+        CalSnapPrimaryButton(onClick = { onAdd(multiplier) }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.add_favourite_add_portion))
+        }
+    }
+}
+
+private data class PortionOption(val multiplier: Float, val label: String, val caption: String)
+
+@Composable
+private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val bg = if (selected) CalSnapStreak else MaterialTheme.colorScheme.surface
+    val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+    val sub = if (selected) Color.White.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(bg)
+            .border(BorderStroke(0.5.dp, if (selected) CalSnapStreak else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(16.dp))
+            .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(option.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = fg)
+        Text(option.caption, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun PortionStepButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(17.dp))
+            .calSnapClickable(pressedScale = 0.78f, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -528,13 +708,18 @@ private fun MacroPill(label: String, value: Float, color: androidx.compose.ui.gr
     }
 }
 
+private fun formatMultiplier(value: Float): String =
+    if (value % 1f == 0f) value.toInt().toString() else String.format(Locale.US, "%.1f", value)
+
 private fun foodEmoji(name: String): String {
     val lower = name.lowercase()
     return when {
         listOf("кофе", "чай", "вода", "сок", "молоко").any(lower::contains) -> "🥤"
         listOf("кур", "мяс", "гов", "свин", "рыб").any(lower::contains) -> "🍗"
         listOf("салат", "огур", "помид", "овощ").any(lower::contains) -> "🥗"
+        listOf("карто", "potato").any(lower::contains) -> "🥔"
         listOf("рис", "греч", "овся", "макарон").any(lower::contains) -> "🍚"
+        listOf("понч", "donut").any(lower::contains) -> "🍩"
         listOf("торт", "шокол", "печ", "морож").any(lower::contains) -> "🍰"
         else -> "🍽️"
     }
