@@ -12,17 +12,21 @@
 
     <!-- Home -->
     <string name="home_greeting">Привет, %1$s!</string>
-    <string name="greet_night">Доброй ночи</string>
-    <string name="greet_morning">Доброе утро</string>
-    <string name="greet_day">Добрый день</string>
-    <string name="greet_evening">Добрый вечер</string>
+    <string name="greet_night">Доброй ночи 🌙</string>
+    <string name="greet_morning">Доброе утро ☀️</string>
+    <string name="greet_day">Добрый день 🌤️</string>
+    <string name="greet_evening">Добрый вечер 🌙</string>
     <string name="home_add_food">Добавить еду</string>
     <string name="home_calories_eaten_label">Калорий съедено</string>
+    <string name="home_pct_sub">СЪЕДЕНО</string>
     <string name="home_remaining">Осталось %1$d ккал</string>
     <string name="home_exceeded">Превышено на %1$d ккал</string>
     <string name="home_section_today">Сегодня</string>
-    <string name="home_empty_hint">Нажми +, чтобы добавить первый приём пищи</string>
+    <string name="label_yesterday">Вчера</string>
+    <string name="home_empty_hint">Нажми + чтобы добавить\nпервый приём пищи</string>
     <string name="home_water_title">Вода сегодня</string>
+    <string name="home_api_bar_title">Нужен API ключ Gemini</string>
+    <string name="home_api_bar_sub">Нажми → получи бесплатно за 1 мин</string>
     <string name="meal_breakfast">Завтрак</string>
     <string name="meal_lunch">Обед</string>
     <string name="meal_snack">Перекус</string>
@@ -32,6 +36,9 @@
     <string name="macro_protein">Белки</string>
     <string name="macro_carbs">Углеводы</string>
     <string name="macro_fat">Жиры</string>
+    <string name="macro_p_short">Б</string>
+    <string name="macro_c_short">У</string>
+    <string name="macro_f_short">Ж</string>
 
     <!-- Units -->
     <string name="unit_kcal">ккал</string>

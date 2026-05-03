@@ -59,7 +59,7 @@ class HomeViewModel @Inject constructor(
         userRepository.profile.catch { emit(null) },
         selectedEntries,
         waterRepository.observeToday().catch { emit(emptyList()) },
-        logRepository.observeLastDays(7).catch { emit(emptyList()) },
+        logRepository.observeLastDays(14).catch { emit(emptyList()) },
         selectedDay,
     ) { profile, entries, water, lastDays, selected ->
         val waterGoal = ((profile?.weightKg ?: 70f) * 35f).toInt().coerceIn(1500, 3500)
@@ -71,7 +71,7 @@ class HomeViewModel @Inject constructor(
             profile       = profile,
             entries       = entries,
             selectedDay   = selected,
-            calendarDays  = (6L downTo 0L).map { offset ->
+            calendarDays  = (13L downTo 0L).map { offset ->
                 val date = today.minusDays(offset)
                 val dayEntries = grouped[date].orEmpty()
                 CalendarDay(date, dayEntries.sumOf { it.calories }, dayEntries.isNotEmpty())
