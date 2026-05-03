@@ -11,6 +11,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.repository.UserRepository
@@ -37,6 +40,7 @@ class MainActivity : ComponentActivity() {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        hideSystemNavigation()
 
         splash.setKeepOnScreenCondition { !appState.bootResolved.value }
 
@@ -49,6 +53,24 @@ class MainActivity : ComponentActivity() {
                     start?.let { CalSnapNavHost(startDestination = it) }
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemNavigation()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemNavigation()
+    }
+
+    private fun hideSystemNavigation() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.navigationBars())
         }
     }
 }
