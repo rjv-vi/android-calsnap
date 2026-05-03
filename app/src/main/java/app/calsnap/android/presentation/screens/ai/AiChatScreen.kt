@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,10 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
 import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
-import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapScreen
-import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
@@ -60,8 +64,8 @@ fun AiChatScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             AnimatedSection(0) { AiHeader() }
             if (!ui.hasApiKey) AnimatedSection(1) { ApiMissing() }
@@ -81,38 +85,73 @@ fun AiChatScreen(
 
 @Composable
 private fun AiHeader() {
-    CalSnapCard(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        padding = PaddingValues(16.dp),
-        containerBrush = Brush.verticalGradient(listOf(CalSnapStreak.copy(alpha = 0.16f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))),
-        borderColor = CalSnapStreak.copy(alpha = 0.20f),
-        elevation = 18.dp,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CalSnapIconTile(icon = "🤖", size = 54.dp, background = CalSnapStreak.copy(alpha = 0.12f))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text(stringResource(R.string.ai_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("‹", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        }
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(Color(0xFF2A2622), Color(0xFF141210))))
+                .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("🤖", style = MaterialTheme.typography.titleMedium)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(9.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF22C55E))
+                    .border(androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.background), CircleShape),
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF22C55E)))
+                Text(stringResource(R.string.ai_online), color = Color(0xFF22C55E), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
-            CalSnapPill(text = "Gemini", selected = false)
+        }
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("↻", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
         }
     }
 }
 
 @Composable
 private fun QuickPrompts(enabled: Boolean, onPrompt: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        listOf(
-            stringResource(R.string.ai_prompt_improve),
-            stringResource(R.string.ai_prompt_water),
-            stringResource(R.string.ai_prompt_dinner),
-        ).forEach { prompt ->
+    val prompts = listOf(
+        stringResource(R.string.ai_prompt_norm),
+        stringResource(R.string.ai_prompt_eat),
+        stringResource(R.string.ai_prompt_diet),
+        stringResource(R.string.ai_prompt_bulk),
+        stringResource(R.string.ai_prompt_snack),
+        stringResource(R.string.ai_prompt_cut),
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        items(prompts) { prompt ->
             CalSnapPill(
                 text = prompt,
                 selected = false,
                 onClick = if (enabled) ({ onPrompt(prompt) }) else null,
-                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -213,36 +252,60 @@ private fun ErrorCard(message: String) {
 
 @Composable
 private fun InputBar(ui: AiChatViewModel.UiState, viewModel: AiChatViewModel) {
-    CalSnapCard(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        padding = PaddingValues(10.dp),
-        elevation = 16.dp,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CalSnapTextField(
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), RoundedCornerShape(999.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            BasicTextField(
                 value = ui.input,
                 onValueChange = viewModel::updateInput,
-                label = stringResource(R.string.ai_input_hint),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = ui.hasApiKey && !ui.loading,
-                minLines = 1,
-                maxLines = 4,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (ui.input.isBlank()) {
+                            Text(stringResource(R.string.ai_input_hint), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        innerTextField()
+                    }
+                },
             )
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .calSnapClickable(
-                        enabled = ui.hasApiKey && ui.input.isNotBlank() && !ui.loading,
-                        pressedScale = 0.84f,
-                        onClick = viewModel::send,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.onPrimary)
-            }
+        }
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape)
+                .calSnapClickable(enabled = ui.hasApiKey && !ui.loading, pressedScale = 0.86f, onClick = {}),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        }
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface)
+                .calSnapClickable(
+                    enabled = ui.hasApiKey && ui.input.isNotBlank() && !ui.loading,
+                    pressedScale = 0.84f,
+                    onClick = viewModel::send,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.Send, contentDescription = stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(20.dp))
         }
     }
     Spacer(Modifier.height(8.dp))

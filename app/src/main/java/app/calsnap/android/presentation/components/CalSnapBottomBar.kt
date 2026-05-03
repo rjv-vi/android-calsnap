@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -171,11 +172,18 @@ private fun CalSnapAddNavItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.25f
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "addNavScale",
     )
+    val brush = if (dark) {
+        Brush.linearGradient(listOf(Color(0xFFE8E5DF), Color(0xFFF4F2EE)))
+    } else {
+        Brush.linearGradient(listOf(CalSnapInkSoft, CalSnapInk))
+    }
+    val iconColor = if (dark) CalSnapInk else Color(0xFFF2F0EB)
     Column(
         modifier = modifier
             .calSnapClickable(pressedScale = 0.80f, onClick = onClick)
@@ -193,14 +201,14 @@ private fun CalSnapAddNavItem(
                 .size(48.dp)
                 .shadow(14.dp, CircleShape, clip = false)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(CalSnapInkSoft, CalSnapInk)))
+                .background(brush)
                 .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.14f)), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.label,
-                tint = Color(0xFFF2F0EB),
+                tint = iconColor,
                 modifier = Modifier.size(25.dp),
             )
         }

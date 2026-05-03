@@ -35,8 +35,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,15 +71,18 @@ import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapInk
 import app.calsnap.android.ui.theme.CalSnapStreak
+import java.time.LocalDate
+import java.util.Locale
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun OnboardingScreen(
     onFinished: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val draft by viewModel.draft.collectAsStateWithLifecycle()
-    var height by remember { mutableStateOf(draft.heightCm.toInt().toString()) }
-    var weight by remember { mutableStateOf(draft.weightKg.toInt().toString()) }
+    var height by remember { mutableStateOf(if (draft.heightCm > 0f) draft.heightCm.toInt().toString() else "") }
+    var weight by remember { mutableStateOf(if (draft.weightKg > 0f) draft.weightKg.toInt().toString() else "") }
     val age = BmrCalculator.ageFromDob(draft.dob)
     val canFinish = draft.name.isNotBlank() && age in 5..120 && draft.heightCm in 80f..240f && draft.weightKg in 25f..300f
     val step = draft.step.coerceIn(1, 5)
@@ -228,7 +234,7 @@ private fun StepBody(
                 modifier = Modifier.weight(1f),
             )
         }
-        DateDrum(
+        DobPickerField(
             dob = draft.dob,
             onDob = { value -> viewModel.update { it.copy(dob = value) } },
         )
@@ -258,70 +264,190 @@ private fun StepBody(
                 modifier = Modifier.weight(1f),
             )
         }
-        CalSnapPill(text = if (ageFromDraft(draft) > 0) "${ageFromDraft(draft)}" else "—", selected = false, icon = "🎂")
+        if (ageFromDraft(draft) > 0) {
+            CalSnapPill(text = "${ageFromDraft(draft)}", selected = false, icon = "🎂")
+        }
     }
 }
 
 @Composable
-private fun DateDrum(dob: String, onDob: (String) -> Unit) {
+@OptIn(ExperimentalMaterial3Api::class)
+private fun DobPickerField(dob: String, onDob: (String) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
     val parts = parseDob(dob)
+    val hasDob = dob.isNotBlank()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.onboarding_dob_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+        Text(stringResource(R.string.onboarding_dob_label).uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.20f)), RoundedCornerShape(22.dp))
+                .calSnapClickable(pressedScale = 0.97f) { showPicker = true }
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                if (hasDob) displayDob(parts) else stringResource(R.string.onboarding_dob_pick),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (hasDob) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                fontWeight = if (hasDob) FontWeight.Black else FontWeight.Medium,
+            )
+            Text("▣", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
+        }
+        if (hasDob) {
+            Text("✓ ${stringResource(R.string.onboarding_age_hint, ageFromDobParts(parts))}", style = MaterialTheme.typography.labelMedium, color = Color(0xFF22C55E), fontWeight = FontWeight.Bold)
+        }
+    }
+    if (showPicker) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showPicker = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            scrimColor = Color.Black.copy(alpha = 0.62f),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        ) {
+            DobPickerSheet(
+                parts = parts,
+                onDob = onDob,
+                onDone = { showPicker = false },
+                onCancel = { showPicker = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DobPickerSheet(parts: DobParts, onDob: (String) -> Unit, onDone: () -> Unit, onCancel: () -> Unit) {
+    var current by remember(parts) { mutableStateOf(parts) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 8.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.cancel),
+                modifier = Modifier
+                    .weight(1f)
+                    .calSnapClickable(pressedScale = 0.94f, onClick = onCancel),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(stringResource(R.string.onboarding_dob_label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+            Box(
+                modifier = Modifier
+                    .weight(1f),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(MaterialTheme.colorScheme.onSurface)
+                        .calSnapClickable(
+                            pressedScale = 0.94f,
+                            onClick = {
+                                onDob(formatDob(current))
+                                onDone()
+                            },
+                        )
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                ) {
+                    Text(stringResource(R.string.done), color = MaterialTheme.colorScheme.background, fontWeight = FontWeight.Black)
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             DrumColumn(
-                label = stringResource(R.string.onboarding_dob_year),
-                value = parts.year.toString(),
-                onMinus = { onDob(formatDob(parts.copy(year = (parts.year - 1).coerceIn(1940, 2020)))) },
-                onPlus = { onDob(formatDob(parts.copy(year = (parts.year + 1).coerceIn(1940, 2020)))) },
-                modifier = Modifier.weight(1.25f),
+                label = stringResource(R.string.onboarding_dob_day),
+                previous = (if (current.day == 1) maxDay(current.year, current.month) else current.day - 1).toString().padStart(2, '0'),
+                value = current.day.toString().padStart(2, '0'),
+                next = (if (current.day >= maxDay(current.year, current.month)) 1 else current.day + 1).toString().padStart(2, '0'),
+                onPrevious = { current = current.copy(day = if (current.day == 1) maxDay(current.year, current.month) else current.day - 1) },
+                onNext = { current = current.copy(day = if (current.day >= maxDay(current.year, current.month)) 1 else current.day + 1) },
+                modifier = Modifier.weight(1f),
             )
             DrumColumn(
                 label = stringResource(R.string.onboarding_dob_month),
-                value = parts.month.toString().padStart(2, '0'),
-                onMinus = { onDob(formatDob(parts.copy(month = if (parts.month == 1) 12 else parts.month - 1))) },
-                onPlus = { onDob(formatDob(parts.copy(month = if (parts.month == 12) 1 else parts.month + 1))) },
-                modifier = Modifier.weight(1f),
+                previous = monthName(if (current.month == 1) 12 else current.month - 1),
+                value = monthName(current.month),
+                next = monthName(if (current.month == 12) 1 else current.month + 1),
+                onPrevious = {
+                    val nextMonth = if (current.month == 1) 12 else current.month - 1
+                    current = current.copy(month = nextMonth, day = current.day.coerceIn(1, maxDay(current.year, nextMonth)))
+                },
+                onNext = {
+                    val nextMonth = if (current.month == 12) 1 else current.month + 1
+                    current = current.copy(month = nextMonth, day = current.day.coerceIn(1, maxDay(current.year, nextMonth)))
+                },
+                modifier = Modifier.weight(1.45f),
             )
             DrumColumn(
-                label = stringResource(R.string.onboarding_dob_day),
-                value = parts.day.toString().padStart(2, '0'),
-                onMinus = { onDob(formatDob(parts.copy(day = if (parts.day == 1) maxDay(parts.year, parts.month) else parts.day - 1))) },
-                onPlus = { onDob(formatDob(parts.copy(day = if (parts.day >= maxDay(parts.year, parts.month)) 1 else parts.day + 1))) },
+                label = stringResource(R.string.onboarding_dob_year),
+                previous = (if (current.year <= minBirthYear()) maxBirthYear() else current.year - 1).toString(),
+                value = current.year.toString(),
+                next = (if (current.year >= maxBirthYear()) minBirthYear() else current.year + 1).toString(),
+                onPrevious = {
+                    val nextYear = if (current.year <= minBirthYear()) maxBirthYear() else current.year - 1
+                    current = current.copy(year = nextYear, day = current.day.coerceIn(1, maxDay(nextYear, current.month)))
+                },
+                onNext = {
+                    val nextYear = if (current.year >= maxBirthYear()) minBirthYear() else current.year + 1
+                    current = current.copy(year = nextYear, day = current.day.coerceIn(1, maxDay(nextYear, current.month)))
+                },
                 modifier = Modifier.weight(1f),
             )
         }
-        Text(formatDob(parts), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun DrumColumn(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, modifier: Modifier = Modifier) {
+private fun DrumColumn(
+    label: String,
+    previous: String,
+    value: String,
+    next: String,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-        DrumButton("＋", onPlus)
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        DrumButton("−", onMinus)
+        DrumRow(previous, selected = false, onClick = onPrevious)
+        DrumRow(value, selected = true, onClick = {})
+        DrumRow(next, selected = false, onClick = onNext)
     }
 }
 
 @Composable
-private fun DrumButton(text: String, onClick: () -> Unit) {
+private fun DrumRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.82f))
-            .calSnapClickable(pressedScale = 0.86f, onClick = onClick),
+            .fillMaxWidth()
+            .height(38.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(if (selected) MaterialTheme.colorScheme.surface.copy(alpha = 0.90f) else Color.Transparent)
+            .calSnapClickable(enabled = !selected, pressedScale = 0.92f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+        Text(
+            text,
+            style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.52f),
+            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+        )
     }
 }
 
@@ -515,7 +641,14 @@ private fun StepPreferences(draft: OnboardingViewModel.Draft, viewModel: Onboard
             minLines = 2,
         )
         SummaryPill("👤", draft.name.ifBlank { "—" })
-        SummaryPill("📏", "${draft.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${draft.weightKg.toInt()} ${stringResource(R.string.unit_kg)}")
+        SummaryPill(
+            "📏",
+            if (draft.heightCm > 0f && draft.weightKg > 0f) {
+                "${draft.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${draft.weightKg.toInt()} ${stringResource(R.string.unit_kg)}"
+            } else {
+                "—"
+            },
+        )
     }
 }
 
@@ -624,18 +757,46 @@ private data class DobParts(val year: Int, val month: Int, val day: Int)
 
 private fun parseDob(dob: String): DobParts {
     val values = dob.split('-').mapNotNull { it.toIntOrNull() }
-    val fallback = DobParts(1998, 5, 21)
+    val now = LocalDate.now()
+    val fallback = DobParts(now.year - 20, now.monthValue, now.dayOfMonth.coerceIn(1, maxDay(now.year - 20, now.monthValue)))
     if (values.size != 3) return fallback
-    val year = values[0].coerceIn(1940, 2020)
+    val year = values[0].coerceIn(minBirthYear(), maxBirthYear())
     val month = values[1].coerceIn(1, 12)
     val day = values[2].coerceIn(1, maxDay(year, month))
     return DobParts(year, month, day)
 }
 
+private fun displayDob(parts: DobParts): String =
+    "${parts.day.toString().padStart(2, '0')}.${parts.month.toString().padStart(2, '0')}.${parts.year}"
+
+private fun ageFromDobParts(parts: DobParts): Int = BmrCalculator.ageFromDob(formatDob(parts))
+
 private fun formatDob(parts: DobParts): String {
     val day = parts.day.coerceIn(1, maxDay(parts.year, parts.month))
     return "${parts.year}-${parts.month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
 }
+
+private fun monthName(month: Int): String {
+    val ru = Locale.getDefault().language == "ru"
+    return when (month.coerceIn(1, 12)) {
+        1 -> if (ru) "Январь" else "January"
+        2 -> if (ru) "Февраль" else "February"
+        3 -> if (ru) "Март" else "March"
+        4 -> if (ru) "Апрель" else "April"
+        5 -> if (ru) "Май" else "May"
+        6 -> if (ru) "Июнь" else "June"
+        7 -> if (ru) "Июль" else "July"
+        8 -> if (ru) "Август" else "August"
+        9 -> if (ru) "Сентябрь" else "September"
+        10 -> if (ru) "Октябрь" else "October"
+        11 -> if (ru) "Ноябрь" else "November"
+        else -> if (ru) "Декабрь" else "December"
+    }
+}
+
+private fun minBirthYear(): Int = LocalDate.now().year - 120
+
+private fun maxBirthYear(): Int = LocalDate.now().year - 5
 
 private fun maxDay(year: Int, month: Int): Int = when (month) {
     2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28

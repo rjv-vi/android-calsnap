@@ -71,7 +71,7 @@
     <string name="onboarding_body_subtitle">For accurate calorie targets</string>
     <string name="onboarding_activity_title">Activity</string>
     <string name="onboarding_activity_subtitle">How much do you move?</string>
-    <string name="onboarding_goal_title">Rhythm and goal</string>
+    <string name="onboarding_goal_title">Your goal</string>
     <string name="onboarding_goal_subtitle">AI will tune calories for it</string>
     <string name="onboarding_finish_title">Almost ready</string>
     <string name="onboarding_preferences_title">Food preferences</string>
@@ -81,9 +81,11 @@
     <string name="onboarding_gender_male">Male</string>
     <string name="onboarding_gender_female">Female</string>
     <string name="onboarding_dob_label">Date of birth</string>
+    <string name="onboarding_dob_pick">Pick your date of birth</string>
     <string name="onboarding_dob_year">Year</string>
     <string name="onboarding_dob_month">Mon</string>
     <string name="onboarding_dob_day">Day</string>
+    <string name="onboarding_age_hint">You are %1$d years old</string>
     <string name="onboarding_height_label">Height</string>
     <string name="onboarding_weight_label">Weight</string>
     <string name="onboarding_activity_label">Activity</string>
@@ -145,13 +147,22 @@
 
     <string name="ai_title">AI nutritionist</string>
     <string name="ai_subtitle">Uses your diary, water and goal</string>
-    <string name="ai_input_hint">Ask about meals, water or your goal</string>
+    <string name="ai_online">Online</string>
+    <string name="ai_input_hint">Ask anything…</string>
     <string name="ai_send">Send</string>
     <string name="ai_you">You</string>
     <string name="ai_typing">CalSnap is thinking…</string>
     <string name="ai_prompt_improve">What to improve?</string>
     <string name="ai_prompt_water">How much water?</string>
     <string name="ai_prompt_dinner">Dinner idea</string>
+    <string name="ai_prompt_norm">🔥 My target?</string>
+    <string name="ai_prompt_eat">💡 What to eat?</string>
+    <string name="ai_prompt_diet">📊 My nutrition</string>
+    <string name="ai_prompt_bulk">🏋️ Bulking</string>
+    <string name="ai_prompt_snack">⚡ Quick snack</string>
+    <string name="ai_prompt_cut">🥗 Calorie deficit</string>
 
+    <string name="cancel">Cancel</string>
+    <string name="done">Done</string>
     <string name="close">Close</string>
 </resources>
