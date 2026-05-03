@@ -65,17 +65,20 @@
     <string name="api_key_needed_title">Gemini API key required</string>
     <string name="api_key_needed_sub">Grab a free key at aistudio.google.com and paste it in Settings → API</string>
 
+    <string name="onboarding_tagline">AI calorie tracker</string>
     <string name="onboarding_welcome_title">What should we call you?</string>
     <string name="onboarding_welcome_sub">AI calorie tracker</string>
+    <string name="onboarding_name_subtitle">We\'ll personalize the app for you</string>
+    <string name="onboarding_name_placeholder">Your name</string>
     <string name="onboarding_body_title">Your stats</string>
     <string name="onboarding_body_subtitle">For accurate calorie targets</string>
     <string name="onboarding_activity_title">Activity</string>
-    <string name="onboarding_activity_subtitle">How much do you move?</string>
+    <string name="onboarding_activity_subtitle">How active are you?</string>
     <string name="onboarding_goal_title">Your goal</string>
-    <string name="onboarding_goal_subtitle">AI will tune calories for it</string>
+    <string name="onboarding_goal_subtitle">AI tunes calories around it</string>
     <string name="onboarding_finish_title">Almost ready</string>
     <string name="onboarding_preferences_title">Food preferences</string>
-    <string name="onboarding_preferences_subtitle">AI will respect them in advice. Optional.</string>
+    <string name="onboarding_preferences_subtitle">AI uses these when suggesting (optional)</string>
     <string name="onboarding_name_label">Your name</string>
     <string name="onboarding_gender_label">Gender</string>
     <string name="onboarding_gender_male">Male</string>
@@ -83,11 +86,13 @@
     <string name="onboarding_dob_label">Date of birth</string>
     <string name="onboarding_dob_pick">Pick your date of birth</string>
     <string name="onboarding_dob_year">Year</string>
-    <string name="onboarding_dob_month">Mon</string>
+    <string name="onboarding_dob_month">Month</string>
     <string name="onboarding_dob_day">Day</string>
     <string name="onboarding_age_hint">You are %1$d years old</string>
     <string name="onboarding_height_label">Height</string>
+    <string name="onboarding_height_placeholder">Height (cm)</string>
     <string name="onboarding_weight_label">Weight</string>
+    <string name="onboarding_weight_placeholder">Weight (kg)</string>
     <string name="onboarding_activity_label">Activity</string>
     <string name="onboarding_activity_sedentary">Sedentary</string>
     <string name="onboarding_activity_sedentary_sub">Desk job</string>
@@ -101,7 +106,7 @@
     <string name="onboarding_goal_lose">Lose weight</string>
     <string name="onboarding_goal_maintain">Maintain</string>
     <string name="onboarding_goal_gain">Gain mass</string>
-    <string name="onboarding_allergies_label">Allergies / restrictions</string>
+    <string name="onboarding_allergies_label">Allergies (optional)</string>
     <string name="onboarding_allergies_placeholder">E.g. peanuts, seafood</string>
     <string name="pref_no_meat">No meat</string>
     <string name="pref_no_gluten">No gluten</string>

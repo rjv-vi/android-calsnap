@@ -73,8 +73,11 @@
     <string name="api_key_needed_sub">Получи бесплатный ключ на aistudio.google.com и вставь его в Настройках → API</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_tagline">AI-трекер калорий</string>
     <string name="onboarding_welcome_title">Как тебя зовут?</string>
     <string name="onboarding_welcome_sub">AI-трекер калорий</string>
+    <string name="onboarding_name_subtitle">Настроим приложение лично под тебя</string>
+    <string name="onboarding_name_placeholder">Твоё имя</string>
     <string name="onboarding_body_title">Твои параметры</string>
     <string name="onboarding_body_subtitle">Для точного расчёта нормы калорий</string>
     <string name="onboarding_activity_title">Активность</string>
@@ -83,7 +86,7 @@
     <string name="onboarding_goal_subtitle">AI настроит калории под неё</string>
     <string name="onboarding_finish_title">Почти готово</string>
     <string name="onboarding_preferences_title">Пищевые предпочтения</string>
-    <string name="onboarding_preferences_subtitle">AI учтёт их при советах, это необязательно</string>
+    <string name="onboarding_preferences_subtitle">AI учтёт при советах (необязательно)</string>
     <string name="onboarding_name_label">Твоё имя</string>
     <string name="onboarding_gender_label">Пол</string>
     <string name="onboarding_gender_male">Мужчина</string>
@@ -91,13 +94,15 @@
     <string name="onboarding_dob_label">Дата рождения</string>
     <string name="onboarding_dob_pick">Выбери дату рождения</string>
     <string name="onboarding_dob_year">Год</string>
-    <string name="onboarding_dob_month">Мес</string>
+    <string name="onboarding_dob_month">Месяц</string>
     <string name="onboarding_dob_day">День</string>
     <string name="onboarding_age_hint">Тебе %1$d лет</string>
     <string name="onboarding_height_label">Рост</string>
+    <string name="onboarding_height_placeholder">Рост (см)</string>
     <string name="onboarding_weight_label">Вес</string>
+    <string name="onboarding_weight_placeholder">Вес (кг)</string>
     <string name="onboarding_activity_label">Активность</string>
-    <string name="onboarding_activity_sedentary">Сидячая</string>
+    <string name="onboarding_activity_sedentary">Минимум</string>
     <string name="onboarding_activity_sedentary_sub">Сидячая работа</string>
     <string name="onboarding_activity_light">Лёгкая</string>
     <string name="onboarding_activity_light_sub">1–3 дня/нед</string>
@@ -109,7 +114,7 @@
     <string name="onboarding_goal_lose">Похудеть</string>
     <string name="onboarding_goal_maintain">Держать вес</string>
     <string name="onboarding_goal_gain">Набрать массу</string>
-    <string name="onboarding_allergies_label">Аллергии / ограничения</string>
+    <string name="onboarding_allergies_label">Аллергии (необязательно)</string>
     <string name="onboarding_allergies_placeholder">Например: арахис, морепродукты</string>
     <string name="pref_no_meat">Без мяса</string>
     <string name="pref_no_gluten">Без глютена</string>
@@ -121,7 +126,7 @@
     <string name="pref_no_eggs">Без яиц</string>
     <string name="onboarding_back">← Назад</string>
     <string name="onboarding_next">Продолжить →</string>
-    <string name="onboarding_finish">Поехали! 🚀</string>
+    <string name="onboarding_finish">Начать! 🚀</string>
 
     <!-- Settings -->
     <string name="settings_title">Настройки</string>
