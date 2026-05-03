@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import app.calsnap.android.data.database.CalSnapDatabase
 import app.calsnap.android.data.database.CalSnapMigrations
+import app.calsnap.android.data.database.dao.FavouriteFoodDao
 import app.calsnap.android.data.database.dao.FoodLogDao
 import app.calsnap.android.data.database.dao.WaterDao
 import app.calsnap.android.data.database.dao.WeightDao
@@ -21,11 +22,12 @@ object DatabaseModule {
     @Provides @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): CalSnapDatabase =
         Room.databaseBuilder(ctx, CalSnapDatabase::class.java, CalSnapDatabase.NAME)
-            .addMigrations(CalSnapMigrations.MIGRATION_1_2)
+            .addMigrations(CalSnapMigrations.MIGRATION_1_2, CalSnapMigrations.MIGRATION_2_3)
             .fallbackToDestructiveMigration()
             .build()
 
     @Provides fun provideFoodLogDao(db: CalSnapDatabase): FoodLogDao = db.foodLogDao()
+    @Provides fun provideFavouriteFoodDao(db: CalSnapDatabase): FavouriteFoodDao = db.favouriteFoodDao()
     @Provides fun provideWeightDao(db: CalSnapDatabase): WeightDao   = db.weightDao()
     @Provides fun provideWaterDao(db: CalSnapDatabase): WaterDao     = db.waterDao()
 }

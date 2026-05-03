@@ -50,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -124,6 +123,8 @@ private fun AddFoodContent(
                     .animateContentSize(),
                 shape = RoundedCornerShape(32.dp),
                 padding = PaddingValues(18.dp),
+                containerBrush = Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)),
+                borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                 elevation = 18.dp,
             ) {
                 if (!ui.hasApiKey && ui.tab != AddFoodViewModel.Tab.BARCODE && ui.tab != AddFoodViewModel.Tab.FAVOURITES) {
@@ -341,7 +342,7 @@ private fun FavouritesTab(
 ) {
     var selectedId by remember(favourites) { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        TabIntro("⭐", stringResource(R.string.add_favourites_title), stringResource(R.string.add_favourites_subtitle))
+        FavouriteIntro()
         if (favourites.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -387,8 +388,8 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (selected) CalSnapStreak.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(0.5.dp, if (selected) CalSnapStreak.copy(alpha = 0.34f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)), shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(if (selected) 1.dp else 0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.42f else 0.14f)), shape)
             .calSnapClickable(pressedScale = 0.98f, onClick = onAdd)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -425,7 +426,7 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (selected) CalSnapStreak else MaterialTheme.colorScheme.onSurface)
+                .background(MaterialTheme.colorScheme.onSurface)
                 .calSnapClickable(pressedScale = 0.94f, onClick = onAdd)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
@@ -460,13 +461,13 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
         shape = RoundedCornerShape(28.dp),
         padding = PaddingValues(16.dp),
         containerBrush = Brush.verticalGradient(
-            listOf(CalSnapStreak.copy(alpha = 0.14f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
+            listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface),
         ),
-        borderColor = CalSnapStreak.copy(alpha = 0.26f),
-        elevation = 10.dp,
+        borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f),
+        elevation = 0.dp,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CalSnapIconTile(icon = foodEmoji(entry.foodName), size = 52.dp, background = CalSnapStreak.copy(alpha = 0.14f))
+            NeutralIconTile(icon = foodEmoji(entry.foodName), size = 52.dp)
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.add_favourite_portion_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                 Text(
@@ -521,9 +522,7 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -547,9 +546,9 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
         }
         Spacer(Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MacroPill("Б", protein, MacroProtein, Modifier.weight(1f))
-            MacroPill("У", carbs, MacroCarbs, Modifier.weight(1f))
-            MacroPill("Ж", fat, MacroFat, Modifier.weight(1f))
+            NeutralMacroPill("Б", protein, Modifier.weight(1f))
+            NeutralMacroPill("У", carbs, Modifier.weight(1f))
+            NeutralMacroPill("Ж", fat, Modifier.weight(1f))
         }
         Spacer(Modifier.height(14.dp))
         CalSnapPrimaryButton(onClick = { onAdd(multiplier) }, modifier = Modifier.fillMaxWidth()) {
@@ -558,19 +557,44 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
     }
 }
 
+@Composable
+private fun FavouriteIntro() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        NeutralIconTile(icon = "⭐")
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.add_favourites_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(stringResource(R.string.add_favourites_subtitle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun NeutralIconTile(icon: String, size: androidx.compose.ui.unit.Dp = 52.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(size / 3f))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)), RoundedCornerShape(size / 3f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(icon, style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
 private data class PortionOption(val multiplier: Float, val label: String, val caption: String)
 
 @Composable
 private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val bg = if (selected) CalSnapStreak else MaterialTheme.colorScheme.surface
-    val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
-    val sub = if (selected) Color.White.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface
+    val fg = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+    val sub = if (selected) MaterialTheme.colorScheme.background.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
     Column(
         modifier = modifier
             .height(58.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(bg)
-            .border(BorderStroke(0.5.dp, if (selected) CalSnapStreak else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(16.dp))
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.0f else 0.12f)), RoundedCornerShape(16.dp))
             .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -578,6 +602,18 @@ private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick:
     ) {
         Text(option.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = fg)
         Text(option.caption, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun NeutralMacroPill(label: String, value: Float, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .padding(vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

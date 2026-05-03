@@ -1,5 +1,6 @@
 package app.calsnap.android.data.repository
 
+import app.calsnap.android.data.database.dao.FavouriteFoodDao
 import app.calsnap.android.data.database.dao.FoodLogDao
 import app.calsnap.android.data.database.entity.FoodLogEntity
 import app.calsnap.android.domain.FavouriteFood
@@ -13,6 +14,7 @@ import javax.inject.Singleton
 @Singleton
 class FoodLogRepository @Inject constructor(
     private val dao: FoodLogDao,
+    private val favouriteDao: FavouriteFoodDao,
 ) {
     fun observeToday(): Flow<List<FoodLogEntity>> = observeDay(LocalDate.now())
 
@@ -29,23 +31,26 @@ class FoodLogRepository @Inject constructor(
     }
 
     fun observeFavourites(): Flow<List<FoodLogEntity>> =
-        dao.observeFavourites().map { entries ->
+        favouriteDao.observeAll().map { entries ->
             entries
-                .distinctBy { FavouriteFood.key(it) }
+                .distinctBy { FavouriteFood.stableKey(it) }
                 .take(30)
-                .map { FavouriteFood.normalizedServing(it).copy(favourite = true) }
+                .map { FavouriteFood.toFoodLogEntity(it) }
         }
 
     suspend fun add(entry: FoodLogEntity): Long = dao.insert(entry)
     suspend fun update(entry: FoodLogEntity)    = dao.update(entry)
     suspend fun delete(entry: FoodLogEntity)    = dao.delete(entry)
-    suspend fun isFavouriteById(entry: FoodLogEntity): Boolean = dao.favouriteFlag(entry.id) == 1
+    suspend fun addFavourite(entry: FoodLogEntity) = favouriteDao.upsert(FavouriteFood.toFavouriteEntity(entry))
     suspend fun hasFavouriteLike(entry: FoodLogEntity): Boolean =
-        dao.listFavourites().any { FavouriteFood.same(it, entry) }
+        favouriteDao.listAll().any { FavouriteFood.same(it, entry) }
 
     suspend fun clearFavouritesLike(entry: FoodLogEntity) {
-        dao.listFavourites()
+        favouriteDao.listAll()
             .filter { FavouriteFood.same(it, entry) }
+            .forEach { favouriteDao.deleteByKey(it.favouriteKey) }
+        dao.listFavourites()
+            .filter { FavouriteFood.stableKey(it) == FavouriteFood.stableKey(entry) }
             .forEach { dao.update(it.copy(favourite = false)) }
     }
 
@@ -54,7 +59,10 @@ class FoodLogRepository @Inject constructor(
         return dao.totalCaloriesForDay(start, end)
     }
 
-    suspend fun wipe() = dao.wipe()
+    suspend fun wipe() {
+        dao.wipe()
+        favouriteDao.wipe()
+    }
 
     private fun dayBounds(day: LocalDate): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()

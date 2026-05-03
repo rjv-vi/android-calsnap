@@ -114,7 +114,7 @@ class HomeViewModel @Inject constructor(
         if (logRepository.hasFavouriteLike(entry)) {
             logRepository.clearFavouritesLike(entry)
         } else {
-            logRepository.update(entry.copy(favourite = true))
+            logRepository.addFavourite(entry)
         }
     }
 
@@ -130,7 +130,6 @@ class HomeViewModel @Inject constructor(
         val currentServings = entry.servings.takeIf { it > 0f } ?: 1f
         val nextServings = servings.coerceIn(0.5f, 5f)
         val ratio = nextServings / currentServings
-        val favourite = logRepository.isFavouriteById(entry)
         logRepository.update(
             entry.copy(
                 servings = nextServings,
@@ -138,7 +137,7 @@ class HomeViewModel @Inject constructor(
                 protein = entry.protein * ratio,
                 carbs = entry.carbs * ratio,
                 fat = entry.fat * ratio,
-                favourite = favourite,
+                favourite = false,
             ),
         )
     }
@@ -158,7 +157,6 @@ class HomeViewModel @Inject constructor(
             .getOrElse { Instant.ofEpochMilli(entry.loggedAt).atZone(ZoneId.systemDefault()).toLocalTime() }
         val day = Instant.ofEpochMilli(entry.loggedAt).atZone(ZoneId.systemDefault()).toLocalDate()
         val loggedAt = LocalDateTime.of(day, time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val favourite = logRepository.isFavouriteById(entry)
         logRepository.update(
             entry.copy(
                 loggedAt = loggedAt,
@@ -170,7 +168,7 @@ class HomeViewModel @Inject constructor(
                 fat = fat.coerceAtLeast(0f),
                 mealType = mealType,
                 servings = 1f,
-                favourite = favourite,
+                favourite = false,
             ),
         )
     }
@@ -181,9 +179,9 @@ class HomeViewModel @Inject constructor(
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 
     private fun List<FoodLogEntity>.withFavouriteMarkers(favourites: List<FoodLogEntity>): List<FoodLogEntity> {
-        val favouriteKeys = favourites.map { FavouriteFood.key(it) }.toSet()
+        val favouriteKeys = favourites.map { FavouriteFood.stableKey(it) }.toSet()
         return map { entry ->
-            val favourite = entry.favourite || FavouriteFood.key(entry) in favouriteKeys
+            val favourite = FavouriteFood.stableKey(entry) in favouriteKeys
             if (entry.favourite == favourite) entry else entry.copy(favourite = favourite)
         }
     }

@@ -124,21 +124,20 @@ class AddFoodViewModel @Inject constructor(
         val now = LocalDateTime.now()
         viewModelScope.launch {
             runCatching {
-                foodLogRepository.add(
-                    FoodLogEntity(
-                        loggedAt  = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                        foodName  = result.food,
-                        portion   = result.portion,
-                        calories  = result.calories,
-                        protein   = result.protein,
-                        fat       = result.fat,
-                        carbs     = result.carbs,
-                        mealType  = MealType.forHour(now.hour),
-                        ingredients = result.ingredients.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                        source    = source,
-                        favourite = saveFavourite,
-                    ),
+                val entry = FoodLogEntity(
+                    loggedAt  = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    foodName  = result.food,
+                    portion   = result.portion,
+                    calories  = result.calories,
+                    protein   = result.protein,
+                    fat       = result.fat,
+                    carbs     = result.carbs,
+                    mealType  = MealType.forHour(now.hour),
+                    ingredients = result.ingredients.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                    source    = source,
                 )
+                foodLogRepository.add(entry)
+                if (saveFavourite) foodLogRepository.addFavourite(entry)
             }.onFailure { error ->
                 _ui.update { it.copy(error = error.message) }
             }
