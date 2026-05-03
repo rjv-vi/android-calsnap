@@ -50,13 +50,17 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
@@ -67,6 +71,7 @@ import app.calsnap.android.presentation.components.CalSnapPillTextField
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
+import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -75,6 +80,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 private val HomeEaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -88,7 +94,18 @@ fun HomeScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val goal = ui.profile?.kcalGoal ?: 2000
     var showApiSheet by remember { mutableStateOf(false) }
+    var detailEntry by remember { mutableStateOf<FoodLogEntity?>(null) }
+    var editEntry by remember { mutableStateOf<FoodLogEntity?>(null) }
+    var deleteEntry by remember { mutableStateOf<FoodLogEntity?>(null) }
     val apiSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val detailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    LaunchedEffect(ui.entries, detailEntry?.id, editEntry?.id, deleteEntry?.id) {
+        detailEntry = detailEntry?.let { selected -> ui.entries.firstOrNull { it.id == selected.id } }
+        editEntry = editEntry?.let { selected -> ui.entries.firstOrNull { it.id == selected.id } }
+        deleteEntry = deleteEntry?.let { selected -> ui.entries.firstOrNull { it.id == selected.id } }
+    }
 
     CalSnapScreen(glow = false) {
         Column(
@@ -120,8 +137,9 @@ fun HomeScreen(
                 TodaySection(
                     ui = ui,
                     onAddFood = onAddFood,
+                    onOpenEntry = { detailEntry = it },
                     onToggleFavourite = viewModel::toggleFavourite,
-                    onDelete = viewModel::deleteEntry,
+                    onDelete = { deleteEntry = it },
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -145,6 +163,58 @@ fun HomeScreen(
                 onCancel = { showApiSheet = false },
             )
         }
+    }
+
+    detailEntry?.let { entry ->
+        ModalBottomSheet(
+            onDismissRequest = { detailEntry = null },
+            sheetState = detailSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = Color.Black.copy(alpha = 0.50f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        ) {
+            FoodDetailSheet(
+                entry = entry,
+                onClose = { detailEntry = null },
+                onEdit = { editEntry = entry },
+                onDelete = { deleteEntry = entry },
+                onServingsChange = { viewModel.updateServings(entry, it) },
+            )
+        }
+    }
+
+    editEntry?.let { entry ->
+        ModalBottomSheet(
+            onDismissRequest = { editEntry = null },
+            sheetState = editSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = Color.Black.copy(alpha = 0.45f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        ) {
+            FoodEditSheet(
+                entry = entry,
+                onClose = { editEntry = null },
+                onSave = { name, portion, kcal, protein, carbs, fat, time, meal ->
+                    viewModel.updateEntryFromEdit(entry, name, portion, kcal, protein, carbs, fat, time, meal)
+                    editEntry = null
+                },
+            )
+        }
+    }
+
+    deleteEntry?.let { entry ->
+        DeleteConfirmDialog(
+            entry = entry,
+            onConfirm = {
+                viewModel.deleteEntry(entry)
+                deleteEntry = null
+                detailEntry = null
+                editEntry = null
+            },
+            onCancel = { deleteEntry = null },
+        )
     }
 }
 
@@ -195,6 +265,8 @@ private fun ApiKeySheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp)
             .padding(top = 10.dp, bottom = 30.dp),
     ) {
@@ -257,6 +329,515 @@ private fun ApiKeySheet(
         ) {
             Text(stringResource(R.string.cancel), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold))
         }
+    }
+}
+
+@Composable
+private fun FoodDetailSheet(
+    entry: FoodLogEntity,
+    onClose: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onServingsChange: (Float) -> Unit,
+) {
+    val servings = entry.servings.takeIf { it > 0f } ?: 1f
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (entry.imagePath.isNullOrBlank()) 160.dp else 220.dp)
+                .background(homeSurface2Color()),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(foodEmoji(entry.foodName), style = TextStyle(fontSize = 72.sp))
+        }
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        entry.foodName,
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.8).sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    )
+                    if (!entry.portion.isNullOrBlank()) {
+                        Text(
+                            entry.portion,
+                            modifier = Modifier.padding(top = 4.dp),
+                            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+                        )
+                    }
+                }
+                SheetCloseButton(onClose)
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(
+                    "${entry.calories}",
+                    style = TextStyle(
+                        fontSize = 58.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-4).sp,
+                        lineHeight = 58.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+                Text(
+                    stringResource(R.string.unit_kcal),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    style = TextStyle(fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+                )
+            }
+            Spacer(Modifier.height(22.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DetailMacroTile(stringResource(R.string.macro_protein), entry.protein, macroProteinColor(), Modifier.weight(1f))
+                DetailMacroTile(stringResource(R.string.macro_carbs), entry.carbs, macroCarbsColor(), Modifier.weight(1f))
+                DetailMacroTile(stringResource(R.string.macro_fat), entry.fat, macroFatColor(), Modifier.weight(1f))
+            }
+            if (!entry.ingredients.isNullOrBlank()) {
+                IngredientsBlock(entry.ingredients)
+            }
+            DetailTime(entry)
+            ServingControl(
+                servings = servings,
+                onMinus = { onServingsChange(max(1f, servings - 1f)) },
+                onPlus = { onServingsChange(servings + 1f) },
+            )
+            Row(
+                modifier = Modifier.padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha()))
+                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB0Alpha())), RoundedCornerShape(14.dp))
+                        .calSnapClickable(pressedScale = 0.97f, onClick = onEdit)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        stringResource(R.string.food_detail_edit),
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(homeErrorColor().copy(alpha = 0.10f))
+                        .border(BorderStroke(1.dp, homeErrorColor().copy(alpha = 0.15f)), RoundedCornerShape(16.dp))
+                        .calSnapClickable(pressedScale = 0.97f, onClick = onDelete)
+                        .padding(vertical = 15.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        stringResource(R.string.food_detail_delete),
+                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = homeErrorColor()),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailMacroTile(label: String, value: Float, color: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(homeSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(16.dp))
+            .padding(horizontal = 10.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "${value.roundToInt()}${stringResource(R.string.unit_g)}",
+            style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, color = color),
+        )
+        Text(
+            label.uppercase(),
+            modifier = Modifier.padding(top = 4.dp),
+            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+        )
+    }
+}
+
+@Composable
+private fun IngredientsBlock(ingredients: String) {
+    Column(modifier = Modifier.padding(top = 18.dp, bottom = 8.dp)) {
+        Text(
+            stringResource(R.string.food_detail_ingredients),
+            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+        )
+        ingredients.split(",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .forEach { ingredient ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(ingredient, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface))
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())),
+                )
+            }
+    }
+}
+
+@Composable
+private fun DetailTime(entry: FoodLogEntity) {
+    Box(
+        modifier = Modifier
+            .padding(top = 12.dp)
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())),
+    )
+    Text(
+        stringResource(R.string.food_detail_added, detailDate(entry), detailTime(entry)),
+        modifier = Modifier.padding(vertical = 12.dp),
+        style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha())),
+    )
+}
+
+@Composable
+private fun ServingControl(
+    servings: Float,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+) {
+    val servingsDisplay by animateFloatAsState(
+        targetValue = servings,
+        animationSpec = tween(280, easing = HomeEaseOut),
+        label = "foodDetailServings",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(homeSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(18.dp))
+            .padding(horizontal = 18.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            stringResource(R.string.food_detail_servings),
+            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            QuantityButton(text = "−", primary = false, onClick = onMinus)
+            Text(
+                servingsDisplay.roundToInt().toString(),
+                modifier = Modifier.padding(horizontal = 12.dp),
+                style = TextStyle(fontSize = 26.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface),
+                textAlign = TextAlign.Center,
+            )
+            QuantityButton(text = "+", primary = true, onClick = onPlus)
+        }
+    }
+}
+
+@Composable
+private fun QuantityButton(text: String, primary: Boolean, onClick: () -> Unit) {
+    val bg = if (primary) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha())
+    val fg = if (primary) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+    val border = if (primary) Color.Transparent else MaterialTheme.colorScheme.onSurface.copy(alpha = homeB0Alpha())
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .shadow(if (primary) 4.dp else 0.dp, RoundedCornerShape(19.dp), clip = false)
+            .clip(RoundedCornerShape(19.dp))
+            .background(bg)
+            .border(BorderStroke(1.dp, border), RoundedCornerShape(19.dp))
+            .calSnapClickable(pressedScale = 0.76f, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Light, color = fg, lineHeight = 22.sp))
+    }
+}
+
+@Composable
+private fun FoodEditSheet(
+    entry: FoodLogEntity,
+    onClose: () -> Unit,
+    onSave: (String, String, Int, Float, Float, Float, String, MealType) -> Unit,
+) {
+    var name by remember(entry.id) { mutableStateOf(entry.foodName) }
+    var portion by remember(entry.id) { mutableStateOf(entry.portion.orEmpty()) }
+    var calories by remember(entry.id) { mutableStateOf(entry.calories.toString()) }
+    var protein by remember(entry.id) { mutableStateOf(formatDecimal(entry.protein)) }
+    var carbs by remember(entry.id) { mutableStateOf(formatDecimal(entry.carbs)) }
+    var fat by remember(entry.id) { mutableStateOf(formatDecimal(entry.fat)) }
+    var time by remember(entry.id) { mutableStateOf(detailTime(entry)) }
+    var meal by remember(entry.id) { mutableStateOf(entry.mealType) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 30.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.food_edit_title),
+                style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = MaterialTheme.colorScheme.onSurface),
+            )
+            SheetCloseButton(onClose)
+        }
+        CompactTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = stringResource(R.string.food_edit_name),
+            placeholder = stringResource(R.string.food_edit_name_placeholder),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CompactTextField(
+                value = portion,
+                onValueChange = { portion = it },
+                label = stringResource(R.string.food_edit_portion),
+                placeholder = stringResource(R.string.food_edit_portion_placeholder),
+                modifier = Modifier.weight(1f),
+            )
+            CompactTextField(
+                value = calories,
+                onValueChange = { calories = it.filter { c -> c.isDigit() } },
+                label = stringResource(R.string.food_edit_calories),
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CompactTextField(
+                value = protein,
+                onValueChange = { protein = numericText(it) },
+                label = stringResource(R.string.food_edit_protein),
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f),
+            )
+            CompactTextField(
+                value = carbs,
+                onValueChange = { carbs = numericText(it) },
+                label = stringResource(R.string.food_edit_carbs),
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CompactTextField(
+                value = fat,
+                onValueChange = { fat = numericText(it) },
+                label = stringResource(R.string.food_edit_fat),
+                keyboardType = KeyboardType.Decimal,
+                modifier = Modifier.weight(1f),
+            )
+            CompactTextField(
+                value = time,
+                onValueChange = { time = it.take(5) },
+                label = stringResource(R.string.food_edit_time),
+                placeholder = "20:17",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(
+            stringResource(R.string.food_edit_meal).uppercase(),
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha())),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.SNACK, MealType.DINNER).forEach { option ->
+                MealEditChip(
+                    meal = option,
+                    selected = option == meal,
+                    onClick = { meal = option },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        CalSnapPrimaryButton(
+            onClick = {
+                onSave(
+                    name.trim(),
+                    portion.trim(),
+                    calories.toIntOrNull() ?: entry.calories,
+                    protein.toFloatOrNull() ?: entry.protein,
+                    carbs.toFloatOrNull() ?: entry.carbs,
+                    fat.toFloatOrNull() ?: entry.fat,
+                    time,
+                    meal,
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            height = 58.dp,
+        ) {
+            Text(stringResource(R.string.save), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+private fun CompactTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Text,
+) {
+    Column(modifier = modifier.padding(bottom = 10.dp)) {
+        Text(
+            label.uppercase(),
+            modifier = Modifier.padding(bottom = 4.dp),
+            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha())),
+        )
+        CalSnapTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = "",
+            placeholder = placeholder,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun MealEditChip(meal: MealType, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val bg = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha())
+    val fg = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+    val border = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = homeB0Alpha())
+    val title = mealTitle(meal)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(bg)
+            .border(BorderStroke(1.dp, border), RoundedCornerShape(999.dp))
+            .calSnapClickable(pressedScale = 0.93f, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "${mealEmoji(meal)} $title",
+            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DeleteConfirmDialog(entry: FoodLogEntity, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    val fallbackFood = stringResource(R.string.food_default_label)
+    val kcalUnit = stringResource(R.string.unit_kcal)
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(30.dp, RoundedCornerShape(26.dp), clip = false)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(homeSurfaceColor())
+                    .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB0Alpha())), RoundedCornerShape(26.dp)),
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                    Text("🗑️", style = TextStyle(fontSize = 42.sp))
+                    Text(
+                        stringResource(R.string.confirm_delete_diary_title),
+                        modifier = Modifier.padding(top = 14.dp),
+                        style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, color = MaterialTheme.colorScheme.onSurface),
+                    )
+                    Text(
+                        "«${entry.foodName.ifBlank { fallbackFood }}» (${entry.calories} $kcalUnit)",
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = TextStyle(fontSize = 15.sp, lineHeight = 23.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+                    )
+                }
+                ConfirmButton(text = stringResource(R.string.food_detail_delete).removePrefix("🗑 "), danger = true, onClick = onConfirm)
+                ConfirmButton(text = stringResource(R.string.cancel), danger = false, onClick = onCancel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmButton(text: String, danger: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())),
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .calSnapClickable(pressedScale = 0.99f, onClick = onClick)
+            .padding(vertical = 17.dp, horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = TextStyle(
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (danger) homeErrorColor() else MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha()),
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SheetCloseButton(onClose: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .shadow(1.dp, RoundedCornerShape(16.dp), clip = false)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha()))
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB0Alpha())), RoundedCornerShape(16.dp))
+            .calSnapClickable(pressedScale = 0.82f, onClick = onClose),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("✕", style = TextStyle(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())))
     }
 }
 
@@ -736,6 +1317,7 @@ private fun HomeLinearProgress(
 private fun TodaySection(
     ui: HomeViewModel.UiState,
     onAddFood: () -> Unit,
+    onOpenEntry: (FoodLogEntity) -> Unit,
     onToggleFavourite: (FoodLogEntity) -> Unit,
     onDelete: (FoodLogEntity) -> Unit,
 ) {
@@ -769,6 +1351,7 @@ private fun TodaySection(
                         meal = meal,
                         entries = entries,
                         withDivider = renderedGroups > 0,
+                        onOpenEntry = onOpenEntry,
                         onToggleFavourite = onToggleFavourite,
                         onDelete = onDelete,
                     )
@@ -804,6 +1387,7 @@ private fun MealGroup(
     meal: MealType,
     entries: List<FoodLogEntity>,
     withDivider: Boolean,
+    onOpenEntry: (FoodLogEntity) -> Unit,
     onToggleFavourite: (FoodLogEntity) -> Unit,
     onDelete: (FoodLogEntity) -> Unit,
 ) {
@@ -852,6 +1436,7 @@ private fun MealGroup(
                 entry = entry,
                 index = index,
                 count = entries.size,
+                onOpenEntry = onOpenEntry,
                 onToggleFavourite = onToggleFavourite,
                 onDelete = onDelete,
             )
@@ -864,6 +1449,7 @@ private fun FoodRow(
     entry: FoodLogEntity,
     index: Int,
     count: Int,
+    onOpenEntry: (FoodLogEntity) -> Unit,
     onToggleFavourite: (FoodLogEntity) -> Unit,
     onDelete: (FoodLogEntity) -> Unit,
 ) {
@@ -881,7 +1467,7 @@ private fun FoodRow(
             .shadow(if (count == 1 || index == count - 1) 8.dp else 0.dp, shape, clip = false)
             .clip(shape)
             .background(homeSurfaceColor())
-            .calSnapClickable(pressedScale = 0.985f, onClick = {})
+            .calSnapClickable(pressedScale = 0.985f) { onOpenEntry(entry) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -898,12 +1484,30 @@ private fun FoodRow(
             Text(foodEmoji(entry.foodName), style = TextStyle(fontSize = 24.sp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                entry.foodName,
-                style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    entry.foodName,
+                    modifier = Modifier.weight(1f),
+                    style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (entry.servings > 1f) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 5.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(MaterialTheme.colorScheme.onSurface)
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "${entry.servings.roundToInt()} ${stringResource(R.string.unit_pcs)}",
+                            style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.background),
+                        )
+                    }
+                }
+            }
             Text(
                 foodSubtitle(entry),
                 style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
@@ -1006,6 +1610,34 @@ private fun foodSubtitle(entry: FoodLogEntity): String {
         .format(DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()))
     val portion = entry.portion.orEmpty().trim()
     return if (portion.isBlank()) time else "$time · $portion"
+}
+
+private fun detailDate(entry: FoodLogEntity): String =
+    Instant.ofEpochMilli(entry.loggedAt)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("EEE MMM dd yyyy", Locale.ENGLISH))
+
+private fun detailTime(entry: FoodLogEntity): String =
+    Instant.ofEpochMilli(entry.loggedAt)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()))
+
+private fun formatDecimal(value: Float): String =
+    if (value % 1f == 0f) value.toInt().toString() else String.format(Locale.US, "%.1f", value)
+
+private fun numericText(input: String): String {
+    var dotUsed = false
+    return buildString {
+        input.replace(',', '.').forEach { char ->
+            when {
+                char.isDigit() -> append(char)
+                char == '.' && !dotUsed -> {
+                    append(char)
+                    dotUsed = true
+                }
+            }
+        }
+    }
 }
 
 @Composable

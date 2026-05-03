@@ -26,6 +26,24 @@
     <string name="home_api_bar_sub">Tap → get a free key in 1 min</string>
     <string name="home_api_sheet_title">🔑 Gemini API key</string>
     <string name="home_api_sheet_sub_prefix">Get a free key at</string>
+    <string name="food_detail_added">Added: %1$s at %2$s</string>
+    <string name="food_detail_servings">Number of servings</string>
+    <string name="food_detail_edit">✏️ Edit</string>
+    <string name="food_detail_delete">🗑 Delete</string>
+    <string name="food_detail_ingredients">INGREDIENTS</string>
+    <string name="food_edit_title">✏️ Edit</string>
+    <string name="food_edit_name">Name</string>
+    <string name="food_edit_name_placeholder">Dish name</string>
+    <string name="food_edit_portion">Portion</string>
+    <string name="food_edit_portion_placeholder">200 g</string>
+    <string name="food_edit_calories">Calories</string>
+    <string name="food_edit_protein">Protein (g)</string>
+    <string name="food_edit_carbs">Carbs (g)</string>
+    <string name="food_edit_fat">Fat (g)</string>
+    <string name="food_edit_time">Time</string>
+    <string name="food_edit_meal">Meal</string>
+    <string name="confirm_delete_diary_title">Remove from diary?</string>
+    <string name="food_default_label">Food</string>
     <string name="meal_breakfast">Breakfast</string>
     <string name="meal_lunch">Lunch</string>
     <string name="meal_snack">Snack</string>
@@ -43,6 +61,7 @@
     <string name="unit_kg">kg</string>
     <string name="unit_cm">cm</string>
     <string name="unit_ml">ml</string>
+    <string name="unit_pcs">pcs</string>
 
     <string name="add_food_title">Add food</string>
     <string name="add_food_subtitle">Photo, description or barcode — CalSnap estimates portion and macros</string>

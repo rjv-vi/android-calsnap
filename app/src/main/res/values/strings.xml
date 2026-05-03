@@ -29,6 +29,24 @@
     <string name="home_api_bar_sub">Нажми → получи бесплатно за 1 мин</string>
     <string name="home_api_sheet_title">🔑 API ключ Gemini</string>
     <string name="home_api_sheet_sub_prefix">Получи бесплатный ключ на</string>
+    <string name="food_detail_added">Добавлено: %1$s в %2$s</string>
+    <string name="food_detail_servings">Количество порций</string>
+    <string name="food_detail_edit">✏️ Изменить</string>
+    <string name="food_detail_delete">🗑 Удалить</string>
+    <string name="food_detail_ingredients">СОСТАВ</string>
+    <string name="food_edit_title">✏️ Редактировать</string>
+    <string name="food_edit_name">Название</string>
+    <string name="food_edit_name_placeholder">Название блюда</string>
+    <string name="food_edit_portion">Порция</string>
+    <string name="food_edit_portion_placeholder">200г</string>
+    <string name="food_edit_calories">Калории</string>
+    <string name="food_edit_protein">Белки (г)</string>
+    <string name="food_edit_carbs">Углеводы (г)</string>
+    <string name="food_edit_fat">Жиры (г)</string>
+    <string name="food_edit_time">Время</string>
+    <string name="food_edit_meal">Приём пищи</string>
+    <string name="confirm_delete_diary_title">Удалить из дневника?</string>
+    <string name="food_default_label">Блюдо</string>
     <string name="meal_breakfast">Завтрак</string>
     <string name="meal_lunch">Обед</string>
     <string name="meal_snack">Перекус</string>
@@ -48,6 +66,7 @@
     <string name="unit_kg">кг</string>
     <string name="unit_cm">см</string>
     <string name="unit_ml">мл</string>
+    <string name="unit_pcs">шт</string>
 
     <!-- Add food -->
     <string name="add_food_title">Добавить еду</string>

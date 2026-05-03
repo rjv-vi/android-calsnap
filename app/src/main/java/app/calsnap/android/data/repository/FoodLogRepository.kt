@@ -31,6 +31,7 @@ class FoodLogRepository @Inject constructor(
     suspend fun add(entry: FoodLogEntity): Long = dao.insert(entry)
     suspend fun update(entry: FoodLogEntity)    = dao.update(entry)
     suspend fun delete(entry: FoodLogEntity)    = dao.delete(entry)
+    suspend fun isFavouriteById(entry: FoodLogEntity): Boolean = dao.favouriteFlag(entry.id) == 1
     suspend fun hasFavouriteLike(entry: FoodLogEntity): Boolean = dao.countFavouritesLike(entry.foodName, entry.calories) > 0
     suspend fun clearFavouritesLike(entry: FoodLogEntity) = dao.clearFavouritesLike(entry.foodName, entry.calories)
 

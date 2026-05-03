@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
 
@@ -115,6 +117,59 @@ class HomeViewModel @Inject constructor(
 
     fun deleteEntry(entry: FoodLogEntity) = viewModelScope.launch {
         logRepository.delete(entry)
+    }
+
+    fun updateEntry(entry: FoodLogEntity) = viewModelScope.launch {
+        logRepository.update(entry)
+    }
+
+    fun updateServings(entry: FoodLogEntity, servings: Float) = viewModelScope.launch {
+        val currentServings = entry.servings.takeIf { it > 0f } ?: 1f
+        val nextServings = servings.coerceAtLeast(1f)
+        val ratio = nextServings / currentServings
+        val favourite = logRepository.isFavouriteById(entry)
+        logRepository.update(
+            entry.copy(
+                servings = nextServings,
+                calories = (entry.calories * ratio).toInt().coerceAtLeast(0),
+                protein = entry.protein * ratio,
+                carbs = entry.carbs * ratio,
+                fat = entry.fat * ratio,
+                favourite = favourite,
+            ),
+        )
+    }
+
+    fun updateEntryFromEdit(
+        entry: FoodLogEntity,
+        foodName: String,
+        portion: String,
+        calories: Int,
+        protein: Float,
+        carbs: Float,
+        fat: Float,
+        timeText: String,
+        mealType: MealType,
+    ) = viewModelScope.launch {
+        val time = runCatching { LocalTime.parse(timeText) }
+            .getOrElse { Instant.ofEpochMilli(entry.loggedAt).atZone(ZoneId.systemDefault()).toLocalTime() }
+        val day = Instant.ofEpochMilli(entry.loggedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+        val loggedAt = LocalDateTime.of(day, time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val favourite = logRepository.isFavouriteById(entry)
+        logRepository.update(
+            entry.copy(
+                loggedAt = loggedAt,
+                foodName = foodName.ifBlank { entry.foodName },
+                portion = portion.ifBlank { entry.portion },
+                calories = calories.coerceAtLeast(0),
+                protein = protein.coerceAtLeast(0f),
+                carbs = carbs.coerceAtLeast(0f),
+                fat = fat.coerceAtLeast(0f),
+                mealType = mealType,
+                servings = 1f,
+                favourite = favourite,
+            ),
+        )
     }
 
     private fun FoodLogEntity.localDateOrNull(): LocalDate? =
