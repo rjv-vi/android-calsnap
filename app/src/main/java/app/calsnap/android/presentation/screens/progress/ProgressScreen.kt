@@ -12,6 +12,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -58,12 +59,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
 import app.calsnap.android.presentation.components.AnimatedSection
-import app.calsnap.android.presentation.components.CalSnapCard
 import app.calsnap.android.presentation.components.CalSnapPillTextField
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
@@ -95,6 +96,31 @@ private val ProgressDrinkButtons = listOf(
     DrinkButtonSpec("🥛", R.string.progress_drink_milk, 200),
     DrinkButtonSpec("🫗", R.string.progress_drink_other, 200),
 )
+
+@Composable
+private fun ProgressCard(
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape = RoundedCornerShape(28.dp),
+    padding: PaddingValues = PaddingValues(20.dp),
+    elevation: Dp = 12.dp,
+    borderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .shadow(elevation = elevation, shape = shape, clip = false)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, borderColor), shape),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(padding),
+            content = content,
+        )
+    }
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,7 +285,7 @@ private fun WeekDot(day: ProgressViewModel.WeekDay, modifier: Modifier = Modifie
 
 @Composable
 private fun BmiCard(bmi: Float?) {
-    CalSnapCard(
+    ProgressCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         padding = PaddingValues(20.dp),
@@ -360,7 +386,7 @@ private fun StatsGrid(ui: ProgressViewModel.UiState) {
 
 @Composable
 private fun StatCard(label: String, value: String, subtitle: String, modifier: Modifier = Modifier) {
-    CalSnapCard(
+    ProgressCard(
         modifier = modifier,
         shape = RoundedCornerShape(22.dp),
         padding = PaddingValues(16.dp),
@@ -385,7 +411,7 @@ private fun WaterCard(
         animationSpec = tween(520, easing = ProgressEaseOut),
         label = "progressWater",
     )
-    CalSnapCard(
+    ProgressCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         padding = PaddingValues(0.dp),
@@ -594,7 +620,7 @@ private fun WaterEventChip(event: ProgressViewModel.WaterEvent) {
 
 @Composable
 private fun HeatmapCard(days: List<ProgressViewModel.DaySummary>, goal: Int) {
-    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), padding = PaddingValues(20.dp), elevation = 12.dp) {
+    ProgressCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), padding = PaddingValues(20.dp), elevation = 12.dp) {
         Text(stringResource(R.string.progress_heatmap), style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = MaterialTheme.colorScheme.onSurface))
         Spacer(Modifier.height(16.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -634,7 +660,7 @@ private fun HeatLegendItem(color: Color, label: String) {
 
 @Composable
 private fun WeightCard(ui: ProgressViewModel.UiState, onLogWeight: () -> Unit) {
-    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), padding = PaddingValues(20.dp), elevation = 12.dp) {
+    ProgressCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), padding = PaddingValues(20.dp), elevation = 12.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.progress_weight_dynamics), style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = MaterialTheme.colorScheme.onSurface))
             Box(
