@@ -196,18 +196,25 @@ fun CalSnapPrimaryButton(
     height: Dp = 54.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.25f
+    val brush = if (dark) {
+        Brush.linearGradient(listOf(Color(0xFFE8E5DF), Color(0xFFF4F2EE)))
+    } else {
+        Brush.linearGradient(listOf(CalSnapInkSoft, CalSnapInk))
+    }
+    val contentColor = if (dark) CalSnapInk else Color(0xFFF2F0EB)
     Box(
         modifier = modifier
             .height(height)
             .graphicsLayer { alpha = if (enabled) 1f else 0.48f }
             .shadow(14.dp, RoundedCornerShape(22.dp), clip = false)
             .clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(CalSnapInkSoft, CalSnapInk)))
+            .background(brush)
             .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(22.dp))
             .calSnapClickable(enabled = enabled, pressedScale = 0.96f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        CompositionLocalProvider(LocalContentColor provides Color(0xFFF2F0EB)) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
             ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

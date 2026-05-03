@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,7 +48,6 @@ import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
 import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPill
-import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.calSnapClickable
@@ -78,20 +78,25 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AnimatedSection(0) { HomeHeader(ui) }
-            AnimatedSection(1) { CalendarStrip(ui.calendarDays, ui.selectedDay, viewModel::selectDay) }
             if (!ui.hasApiKey) {
-                AnimatedSection(2) { ApiMissingBar() }
+                AnimatedSection(1) { ApiMissingBar() }
             }
-            AnimatedSection(3) { CalorieHeroCard(eaten = ui.totalCalories, goal = goal) }
-            AnimatedSection(4) {
-                MacroRow(
-                    proteinEaten = ui.totalProtein, proteinGoal = ui.profile?.proteinGoal ?: 100,
-                    carbsEaten = ui.totalCarbs, carbsGoal = ui.profile?.carbsGoal ?: 250,
-                    fatEaten = ui.totalFat, fatGoal = ui.profile?.fatGoal ?: 60,
+            AnimatedSection(2) { CalendarStrip(ui.calendarDays, ui.selectedDay, viewModel::selectDay) }
+            AnimatedSection(3) {
+                CalorieHeroCard(
+                    eaten = ui.totalCalories,
+                    goal = goal,
+                    proteinEaten = ui.totalProtein,
+                    proteinGoal = ui.profile?.proteinGoal ?: 100,
+                    carbsEaten = ui.totalCarbs,
+                    carbsGoal = ui.profile?.carbsGoal ?: 250,
+                    fatEaten = ui.totalFat,
+                    fatGoal = ui.profile?.fatGoal ?: 60,
+                    waterMl = ui.waterMl,
+                    waterGoalMl = ui.waterGoalMl,
                 )
             }
-            AnimatedSection(5) { WaterMiniCard(ui.waterMl, ui.waterGoalMl) }
-            AnimatedSection(6) { TodayCard(ui, onAddFood) }
+            AnimatedSection(4) { TodaySection(ui, onAddFood) }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -247,7 +252,18 @@ private fun CalendarDayChip(day: HomeViewModel.CalendarDay, selected: Boolean, o
 }
 
 @Composable
-private fun CalorieHeroCard(eaten: Int, goal: Int) {
+private fun CalorieHeroCard(
+    eaten: Int,
+    goal: Int,
+    proteinEaten: Float,
+    proteinGoal: Int,
+    carbsEaten: Float,
+    carbsGoal: Int,
+    fatEaten: Float,
+    fatGoal: Int,
+    waterMl: Int,
+    waterGoalMl: Int,
+) {
     val remaining = goal - eaten
     CalSnapCard(
         modifier = Modifier.fillMaxWidth(),
@@ -285,6 +301,59 @@ private fun CalorieHeroCard(eaten: Int, goal: Int) {
             }
             CalorieRing(eaten = eaten, goal = goal)
         }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MacroMiniTile(stringResource(R.string.macro_protein), proteinEaten, proteinGoal.toFloat(), MacroProtein, Modifier.weight(1f))
+            MacroMiniTile(stringResource(R.string.macro_carbs), carbsEaten, carbsGoal.toFloat(), MacroCarbs, Modifier.weight(1f))
+            MacroMiniTile(stringResource(R.string.macro_fat), fatEaten, fatGoal.toFloat(), MacroFat, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(16.dp))
+        WaterStrip(waterMl = waterMl, goalMl = waterGoalMl)
+    }
+}
+
+@Composable
+private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("${value.toInt()}${stringResource(R.string.unit_g)}", color = color, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Text("${goal.toInt()}${stringResource(R.string.unit_g)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        }
+        CalSnapProgressBar(progress = value / goal.coerceAtLeast(1f), color = color, height = 5.dp)
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun WaterStrip(waterMl: Int, goalMl: Int) {
+    val waterDisplay by animateIntAsState(
+        targetValue = waterMl,
+        animationSpec = tween(450, easing = FastOutSlowInEasing),
+        label = "homeWaterInline",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MacroWater.copy(alpha = 0.10f))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("💧")
+        CalSnapProgressBar(
+            progress = waterMl.toFloat() / goalMl.coerceAtLeast(1).toFloat(),
+            color = MacroWater,
+            height = 7.dp,
+            modifier = Modifier.weight(1f),
+        )
+        Text("$waterDisplay / $goalMl ${stringResource(R.string.unit_ml)}", color = MacroWater, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
     }
 }
 
@@ -389,17 +458,12 @@ private fun MacroTile(label: String, value: Float, goal: Float, color: Color, mo
 }
 
 @Composable
-private fun TodayCard(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
-    CalSnapCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        padding = PaddingValues(14.dp),
-        elevation = 8.dp,
-    ) {
+private fun TodaySection(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.home_section_today),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
             )
             Text(
@@ -409,15 +473,21 @@ private fun TodayCard(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
                 fontWeight = FontWeight.Bold,
             )
         }
-        Spacer(Modifier.height(12.dp))
         if (ui.entries.isEmpty()) {
             EmptyToday(onAddFood)
         } else {
-            val orderedMeals = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.SNACK, MealType.DINNER)
-            orderedMeals.forEach { meal ->
-                val entries = ui.entries.filter { it.mealType == meal }
-                if (entries.isNotEmpty()) {
-                    MealGroup(meal, entries)
+            CalSnapCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                padding = PaddingValues(14.dp),
+                elevation = 8.dp,
+            ) {
+                val orderedMeals = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.SNACK, MealType.DINNER)
+                orderedMeals.forEach { meal ->
+                    val entries = ui.entries.filter { it.mealType == meal }
+                    if (entries.isNotEmpty()) {
+                        MealGroup(meal, entries)
+                    }
                 }
             }
         }
@@ -430,16 +500,18 @@ private fun EmptyToday(onAddFood: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.44f))
-            .padding(18.dp),
+            .calSnapClickable(pressedScale = 0.96f, onClick = onAddFood)
+            .padding(top = 48.dp, bottom = 34.dp, start = 18.dp, end = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("🥗", style = MaterialTheme.typography.displaySmall)
-        Text(stringResource(R.string.home_empty_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        CalSnapPrimaryButton(onClick = onAddFood, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.home_add_food))
-        }
+        Text(
+            stringResource(R.string.home_empty_hint),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

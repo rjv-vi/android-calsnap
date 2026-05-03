@@ -21,7 +21,7 @@
     <string name="home_remaining">Осталось %1$d ккал</string>
     <string name="home_exceeded">Превышено на %1$d ккал</string>
     <string name="home_section_today">Сегодня</string>
-    <string name="home_empty_hint">Нажми «Добавить» чтобы записать первый приём пищи</string>
+    <string name="home_empty_hint">Нажми +, чтобы добавить первый приём пищи</string>
     <string name="home_water_title">Вода сегодня</string>
     <string name="meal_breakfast">Завтрак</string>
     <string name="meal_lunch">Обед</string>
@@ -73,9 +73,10 @@
     <string name="api_key_needed_sub">Получи бесплатный ключ на aistudio.google.com и вставь его в Настройках → API</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Добро пожаловать 🍎</string>
-    <string name="onboarding_welcome_sub">Настроим приложение лично под тебя</string>
-    <string name="onboarding_body_title">Тело и возраст</string>
+    <string name="onboarding_welcome_title">Как тебя зовут?</string>
+    <string name="onboarding_welcome_sub">AI-трекер калорий</string>
+    <string name="onboarding_body_title">Твои параметры</string>
+    <string name="onboarding_body_subtitle">Для точного расчёта нормы калорий</string>
     <string name="onboarding_activity_title">Активность</string>
     <string name="onboarding_activity_subtitle">Сколько ты двигаешься?</string>
     <string name="onboarding_goal_title">Ритм и цель</string>
@@ -95,13 +96,17 @@
     <string name="onboarding_weight_label">Вес</string>
     <string name="onboarding_activity_label">Активность</string>
     <string name="onboarding_activity_sedentary">Сидячая</string>
+    <string name="onboarding_activity_sedentary_sub">Сидячая работа</string>
     <string name="onboarding_activity_light">Лёгкая</string>
+    <string name="onboarding_activity_light_sub">1–3 дня/нед</string>
     <string name="onboarding_activity_moderate">Средняя</string>
+    <string name="onboarding_activity_moderate_sub">3–5 дней/нед</string>
     <string name="onboarding_activity_active">Высокая</string>
+    <string name="onboarding_activity_active_sub">6–7 дней/нед</string>
     <string name="onboarding_goal_label">Цель</string>
     <string name="onboarding_goal_lose">Похудеть</string>
-    <string name="onboarding_goal_maintain">Поддерживать</string>
-    <string name="onboarding_goal_gain">Набрать</string>
+    <string name="onboarding_goal_maintain">Держать вес</string>
+    <string name="onboarding_goal_gain">Набрать массу</string>
     <string name="onboarding_allergies_label">Аллергии / ограничения</string>
     <string name="onboarding_allergies_placeholder">Например: арахис, морепродукты</string>
     <string name="pref_no_meat">Без мяса</string>
@@ -112,9 +117,9 @@
     <string name="pref_keto">Кето</string>
     <string name="pref_halal">Халяль</string>
     <string name="pref_no_eggs">Без яиц</string>
-    <string name="onboarding_back">Назад</string>
-    <string name="onboarding_next">Дальше</string>
-    <string name="onboarding_finish">Начать 🚀</string>
+    <string name="onboarding_back">← Назад</string>
+    <string name="onboarding_next">Продолжить →</string>
+    <string name="onboarding_finish">Поехали! 🚀</string>
 
     <!-- Settings -->
     <string name="settings_title">Настройки</string>

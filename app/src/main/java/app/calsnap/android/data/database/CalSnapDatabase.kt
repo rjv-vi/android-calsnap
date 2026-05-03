@@ -31,11 +31,13 @@ abstract class CalSnapDatabase : RoomDatabase() {
 }
 
 class CalSnapConverters {
-    @TypeConverter fun fromMealType(m: MealType): String = m.name
-    @TypeConverter fun toMealType(s: String): MealType = MealType.valueOf(s)
+    @TypeConverter fun fromMealType(m: MealType?): String = (m ?: MealType.SNACK).name
+    @TypeConverter fun toMealType(s: String?): MealType =
+        runCatching { MealType.valueOf(s.orEmpty().uppercase()) }.getOrDefault(MealType.SNACK)
 
-    @TypeConverter fun fromSource(s: FoodLogEntity.Source): String = s.name
-    @TypeConverter fun toSource(s: String): FoodLogEntity.Source = FoodLogEntity.Source.valueOf(s)
+    @TypeConverter fun fromSource(s: FoodLogEntity.Source?): String = (s ?: FoodLogEntity.Source.MANUAL).name
+    @TypeConverter fun toSource(s: String?): FoodLogEntity.Source =
+        runCatching { FoodLogEntity.Source.valueOf(s.orEmpty().uppercase()) }.getOrDefault(FoodLogEntity.Source.MANUAL)
 }
 
 object CalSnapMigrations {

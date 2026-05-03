@@ -13,13 +13,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,7 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,13 +60,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
 import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.domain.BmrCalculator
-import app.calsnap.android.presentation.components.CalSnapCard
 import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
+import app.calsnap.android.ui.theme.CalSnapInk
 import app.calsnap.android.ui.theme.CalSnapStreak
 
 @Composable
@@ -83,52 +91,51 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .padding(horizontal = 28.dp)
+                .widthIn(max = 430.dp)
+                .align(Alignment.TopCenter)
+                .padding(top = 54.dp, bottom = 44.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LogoBlock()
             StepDots(step)
-            CalSnapCard(
+            AnimatedContent(
+                targetState = step,
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateContentSize(),
-                shape = RoundedCornerShape(34.dp),
-                padding = PaddingValues(18.dp),
-                elevation = 20.dp,
-            ) {
-                AnimatedContent(
-                    targetState = step,
-                    transitionSpec = {
-                        (fadeIn(tween(180, easing = FastOutSlowInEasing)) + slideInHorizontally(tween(250, easing = FastOutSlowInEasing)) { it / 5 }) togetherWith
-                            (fadeOut(tween(120, easing = FastOutSlowInEasing)) + slideOutHorizontally(tween(170, easing = FastOutSlowInEasing)) { -it / 6 })
-                    },
-                    label = "onboardingStep",
-                ) { currentStep ->
-                    when (currentStep) {
-                        1 -> StepIdentity(draft, viewModel)
-                        2 -> StepBody(draft, viewModel, height, weight, { height = it }, { weight = it })
-                        3 -> StepActivity(draft, viewModel)
-                        4 -> StepGoal(draft, viewModel)
-                        else -> StepPreferences(draft, viewModel)
-                    }
+                transitionSpec = {
+                    (fadeIn(tween(180, easing = FastOutSlowInEasing)) + slideInHorizontally(tween(250, easing = FastOutSlowInEasing)) { it / 5 }) togetherWith
+                        (fadeOut(tween(120, easing = FastOutSlowInEasing)) + slideOutHorizontally(tween(170, easing = FastOutSlowInEasing)) { -it / 6 })
+                },
+                label = "onboardingStep",
+            ) { currentStep ->
+                when (currentStep) {
+                    1 -> StepIdentity(draft, viewModel)
+                    2 -> StepBody(draft, viewModel, height, weight, { height = it }, { weight = it })
+                    3 -> StepActivity(draft, viewModel)
+                    4 -> StepGoal(draft, viewModel)
+                    else -> StepPreferences(draft, viewModel)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                if (step > 1) {
-                    CalSnapSecondaryButton(
-                        onClick = { viewModel.update { it.copy(step = step - 1) } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.onboarding_back)) }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 CalSnapPrimaryButton(
                     onClick = {
                         if (step < 5) viewModel.update { it.copy(step = step + 1) } else viewModel.finish(onFinished)
                     },
                     enabled = if (step < 5) canNext else canFinish,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 58.dp,
                 ) {
                     Text(if (step < 5) stringResource(R.string.onboarding_next) else stringResource(R.string.onboarding_finish))
+                }
+                if (step > 1) {
+                    CalSnapSecondaryButton(
+                        onClick = { viewModel.update { it.copy(step = step - 1) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        height = 54.dp,
+                    ) { Text(stringResource(R.string.onboarding_back)) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -145,13 +152,18 @@ private fun LogoBlock() {
         animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "logoFloatY",
     )
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "🍎",
-            style = MaterialTheme.typography.displayLarge,
-            modifier = Modifier.graphicsLayer { translationY = y },
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Image(
+            painter = painterResource(R.drawable.calsnap_icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(86.dp)
+                .graphicsLayer { translationY = y },
         )
-        Text("CalSnap", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("Cal", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black)
+            Text("Snap", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black, color = CalSnapStreak)
+        }
         Text(
             stringResource(R.string.onboarding_welcome_sub),
             style = MaterialTheme.typography.titleMedium,
@@ -168,7 +180,7 @@ private fun StepDots(step: Int) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(5.dp)
+                    .height(3.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(if (index <= step) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant),
             )
@@ -186,15 +198,6 @@ private fun StepIdentity(draft: OnboardingViewModel.Draft, viewModel: Onboarding
             label = stringResource(R.string.onboarding_name_label),
             modifier = Modifier.fillMaxWidth(),
         )
-        Text(stringResource(R.string.onboarding_gender_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
-        ChoiceRow(
-            options = listOf(
-                Choice(UserProfile.Gender.MALE, "♂", stringResource(R.string.onboarding_gender_male)),
-                Choice(UserProfile.Gender.FEMALE, "♀", stringResource(R.string.onboarding_gender_female)),
-            ),
-            selected = draft.gender,
-            onSelect = { value -> viewModel.update { it.copy(gender = value) } },
-        )
     }
 }
 
@@ -208,7 +211,23 @@ private fun StepBody(
     onWeight: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        StepTitle(stringResource(R.string.onboarding_body_title), stringResource(R.string.onboarding_dob_label))
+        StepTitle(stringResource(R.string.onboarding_body_title), stringResource(R.string.onboarding_body_subtitle))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            GenderTile(
+                icon = "♂",
+                label = stringResource(R.string.onboarding_gender_male),
+                selected = draft.gender == UserProfile.Gender.MALE,
+                onClick = { viewModel.update { it.copy(gender = UserProfile.Gender.MALE) } },
+                modifier = Modifier.weight(1f),
+            )
+            GenderTile(
+                icon = "♀",
+                label = stringResource(R.string.onboarding_gender_female),
+                selected = draft.gender == UserProfile.Gender.FEMALE,
+                onClick = { viewModel.update { it.copy(gender = UserProfile.Gender.FEMALE) } },
+                modifier = Modifier.weight(1f),
+            )
+        }
         DateDrum(
             dob = draft.dob,
             onDob = { value -> viewModel.update { it.copy(dob = value) } },
@@ -310,17 +329,42 @@ private fun DrumButton(text: String, onClick: () -> Unit) {
 private fun StepActivity(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StepTitle(stringResource(R.string.onboarding_activity_title), stringResource(R.string.onboarding_activity_subtitle))
-        Text(stringResource(R.string.onboarding_activity_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
-        ChoiceColumn(
-            options = listOf(
-                Choice(UserProfile.Activity.SEDENTARY, "🪑", stringResource(R.string.onboarding_activity_sedentary)),
-                Choice(UserProfile.Activity.LIGHT, "🚶", stringResource(R.string.onboarding_activity_light)),
-                Choice(UserProfile.Activity.MODERATE, "🏃", stringResource(R.string.onboarding_activity_moderate)),
-                Choice(UserProfile.Activity.ACTIVE, "💪", stringResource(R.string.onboarding_activity_active)),
-            ),
-            selected = draft.activity,
-            onSelect = { value -> viewModel.update { it.copy(activity = value) } },
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            ActivityTile(
+                icon = "🛋️",
+                label = stringResource(R.string.onboarding_activity_sedentary),
+                subtitle = stringResource(R.string.onboarding_activity_sedentary_sub),
+                selected = draft.activity == UserProfile.Activity.SEDENTARY,
+                onClick = { viewModel.update { it.copy(activity = UserProfile.Activity.SEDENTARY) } },
+                modifier = Modifier.weight(1f),
+            )
+            ActivityTile(
+                icon = "🚶",
+                label = stringResource(R.string.onboarding_activity_light),
+                subtitle = stringResource(R.string.onboarding_activity_light_sub),
+                selected = draft.activity == UserProfile.Activity.LIGHT,
+                onClick = { viewModel.update { it.copy(activity = UserProfile.Activity.LIGHT) } },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            ActivityTile(
+                icon = "🏃",
+                label = stringResource(R.string.onboarding_activity_moderate),
+                subtitle = stringResource(R.string.onboarding_activity_moderate_sub),
+                selected = draft.activity == UserProfile.Activity.MODERATE,
+                onClick = { viewModel.update { it.copy(activity = UserProfile.Activity.MODERATE) } },
+                modifier = Modifier.weight(1f),
+            )
+            ActivityTile(
+                icon = "💪",
+                label = stringResource(R.string.onboarding_activity_active),
+                subtitle = stringResource(R.string.onboarding_activity_active_sub),
+                selected = draft.activity == UserProfile.Activity.ACTIVE,
+                onClick = { viewModel.update { it.copy(activity = UserProfile.Activity.ACTIVE) } },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -328,19 +372,110 @@ private fun StepActivity(draft: OnboardingViewModel.Draft, viewModel: Onboarding
 private fun StepGoal(draft: OnboardingViewModel.Draft, viewModel: OnboardingViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StepTitle(stringResource(R.string.onboarding_goal_title), stringResource(R.string.onboarding_goal_subtitle))
-        Text(stringResource(R.string.onboarding_goal_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
-        ChoiceRow(
-            options = listOf(
-                Choice(UserProfile.Goal.LOSE, "↓", stringResource(R.string.onboarding_goal_lose)),
-                Choice(UserProfile.Goal.MAINTAIN, "=", stringResource(R.string.onboarding_goal_maintain)),
-                Choice(UserProfile.Goal.GAIN, "↑", stringResource(R.string.onboarding_goal_gain)),
-            ),
-            selected = draft.goal,
-            onSelect = { value -> viewModel.update { it.copy(goal = value) } },
-        )
-        SummaryPill("🔥", goalLabel(draft.goal))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            GoalTile(
+                icon = "📉",
+                label = stringResource(R.string.onboarding_goal_lose),
+                selected = draft.goal == UserProfile.Goal.LOSE,
+                onClick = { viewModel.update { it.copy(goal = UserProfile.Goal.LOSE) } },
+                modifier = Modifier.weight(1f),
+            )
+            GoalTile(
+                icon = "⚖️",
+                label = stringResource(R.string.onboarding_goal_maintain),
+                selected = draft.goal == UserProfile.Goal.MAINTAIN,
+                onClick = { viewModel.update { it.copy(goal = UserProfile.Goal.MAINTAIN) } },
+                modifier = Modifier.weight(1f),
+            )
+            GoalTile(
+                icon = "💪",
+                label = stringResource(R.string.onboarding_goal_gain),
+                selected = draft.goal == UserProfile.Goal.GAIN,
+                onClick = { viewModel.update { it.copy(goal = UserProfile.Goal.GAIN) } },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
+
+@Composable
+private fun GenderTile(
+    icon: String,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SelectableTile(selected = selected, onClick = onClick, modifier = modifier.height(132.dp)) {
+        Text(icon, style = MaterialTheme.typography.displaySmall, color = if (icon == "♂") Color(0xFF10B8AA) else Color(0xFFC026D3))
+        Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = tileContentColor(selected))
+    }
+}
+
+@Composable
+private fun ActivityTile(
+    icon: String,
+    label: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SelectableTile(selected = selected, onClick = onClick, modifier = modifier.height(92.dp), horizontal = false) {
+        Text("$icon $label", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = tileContentColor(selected))
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = tileMutedColor(selected))
+    }
+}
+
+@Composable
+private fun GoalTile(
+    icon: String,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SelectableTile(selected = selected, onClick = onClick, modifier = modifier.height(112.dp)) {
+        Text(icon, style = MaterialTheme.typography.headlineLarge)
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = tileContentColor(selected), textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun SelectableTile(
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    horizontal: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.25f
+    val brush = if (selected) {
+        Brush.linearGradient(listOf(CalSnapInk.copy(alpha = if (dark) 0.96f else 1f), Color(0xFF2A2622)))
+    } else {
+        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f)))
+    }
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(brush)
+            .border(BorderStroke(0.5.dp, if (selected) Color.White.copy(alpha = 0.10f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), shape)
+            .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
+            .padding(if (horizontal) 14.dp else 12.dp),
+        horizontalAlignment = if (horizontal) Alignment.Start else Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        content = content,
+    )
+}
+
+@Composable
+private fun tileContentColor(selected: Boolean): Color =
+    if (selected) Color(0xFFF2F0EB) else MaterialTheme.colorScheme.onSurface
+
+@Composable
+private fun tileMutedColor(selected: Boolean): Color =
+    if (selected) Color(0xCCF2F0EB) else MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)

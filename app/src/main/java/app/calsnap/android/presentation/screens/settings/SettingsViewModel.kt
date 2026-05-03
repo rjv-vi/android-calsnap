@@ -30,7 +30,7 @@ class SettingsViewModel @Inject constructor(
         val modelsError: String? = null,
     )
 
-    private val _ui = MutableStateFlow(UiState(hasGeminiKey = keyStore.hasGeminiKey()))
+    private val _ui = MutableStateFlow(UiState(hasGeminiKey = safeHasGeminiKey()))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     init {
@@ -47,7 +47,7 @@ class SettingsViewModel @Inject constructor(
 
     fun saveGeminiKey(apiKey: String) {
         keyStore.setGeminiApiKey(apiKey)
-        _ui.update { it.copy(hasGeminiKey = keyStore.hasGeminiKey()) }
+        _ui.update { it.copy(hasGeminiKey = safeHasGeminiKey()) }
         loadGeminiModels()
     }
 
@@ -57,7 +57,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun loadGeminiModels() {
-        if (!keyStore.hasGeminiKey()) return
+        if (!safeHasGeminiKey()) return
         _ui.update { it.copy(modelsLoading = true, modelsError = null) }
         viewModelScope.launch {
             runCatching { geminiClient.fetchModels() }
@@ -72,4 +72,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setDarkTheme(on: Boolean?) = viewModelScope.launch { prefs.setDarkTheme(on) }
     fun setLanguage(code: String)  = viewModelScope.launch { prefs.setLanguage(code) }
+
+    private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 }

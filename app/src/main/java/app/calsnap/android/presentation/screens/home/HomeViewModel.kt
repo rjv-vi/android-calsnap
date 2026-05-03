@@ -77,7 +77,7 @@ class HomeViewModel @Inject constructor(
             totalFat      = entries.fold(0f) { acc, e -> acc + e.fat },
             waterMl       = water.sumOf { it.milliliters },
             waterGoalMl   = waterGoal,
-            hasApiKey     = keyStore.hasGeminiKey(),
+            hasApiKey     = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, UiState())
 

@@ -17,23 +17,35 @@ import javax.inject.Singleton
 @Singleton
 class SecureKeyStore @Inject constructor(@ApplicationContext context: Context) {
 
-    private val prefs = runCatching { encryptedPrefs(context) }
+    private val appContext = context.applicationContext
+    private var prefs: SharedPreferences? = runCatching { encryptedPrefs(appContext) }
         .recoverCatching {
-            context.deleteSharedPreferences(PREFS_FILE)
-            encryptedPrefs(context)
+            appContext.deleteSharedPreferences(PREFS_FILE)
+            encryptedPrefs(appContext)
         }
         .getOrNull()
     private var memoryKey: String? = null
 
     /** Null when the user has not entered a key yet. */
-    fun getGeminiApiKey(): String? = (prefs?.getString(KEY_GEMINI, null) ?: memoryKey)?.takeIf { it.isNotBlank() }
+    fun getGeminiApiKey(): String? {
+        val stored = runCatching { ensurePrefs()?.getString(KEY_GEMINI, null) }
+            .getOrElse {
+                recoverEncryptedPrefs()
+                null
+            }
+        return (stored ?: memoryKey)?.takeIf { it.isNotBlank() }
+    }
 
     fun setGeminiApiKey(apiKey: String?) {
         memoryKey = apiKey?.trim()?.takeIf { it.isNotBlank() }
-        prefs?.edit()?.apply {
-            if (apiKey.isNullOrBlank()) remove(KEY_GEMINI)
-            else putString(KEY_GEMINI, apiKey.trim())
-            apply()
+        runCatching {
+            ensurePrefs()?.edit()?.apply {
+                if (apiKey.isNullOrBlank()) remove(KEY_GEMINI)
+                else putString(KEY_GEMINI, apiKey.trim())
+                apply()
+            }
+        }.onFailure {
+            recoverEncryptedPrefs()
         }
     }
 
@@ -41,7 +53,8 @@ class SecureKeyStore @Inject constructor(@ApplicationContext context: Context) {
 
     fun wipe() {
         memoryKey = null
-        prefs?.edit()?.clear()?.apply()
+        runCatching { ensurePrefs()?.edit()?.clear()?.apply() }
+            .onFailure { recoverEncryptedPrefs() }
     }
 
     private companion object {
@@ -60,5 +73,16 @@ class SecureKeyStore @Inject constructor(@ApplicationContext context: Context) {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
             )
         }
+    }
+
+    private fun ensurePrefs(): SharedPreferences? {
+        if (prefs == null) prefs = runCatching { encryptedPrefs(appContext) }.getOrNull()
+        return prefs
+    }
+
+    private fun recoverEncryptedPrefs() {
+        prefs = null
+        runCatching { appContext.deleteSharedPreferences(PREFS_FILE) }
+        prefs = runCatching { encryptedPrefs(appContext) }.getOrNull()
     }
 }
