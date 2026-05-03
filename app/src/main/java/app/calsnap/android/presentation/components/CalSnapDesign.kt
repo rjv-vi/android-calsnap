@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -566,9 +567,7 @@ fun CalSnapStepDots(
 
 /**
  * iOS-style scroll wheel picker that mirrors the PWA drum picker behaviour
- * (`drum.js`, `ITEM_H = 44`). Uses a snapping LazyColumn so users swipe to
- * pick values rather than tapping prev/next rows. Items further from the
- * center fade and shrink, matching `.drum-item.sel` vs `.drum-item`.
+ * (`drum.js`, `ITEM_H = 44`) using a snapping LazyColumn.
  */
 @Composable
 fun CalSnapWheelPicker(
@@ -577,9 +576,13 @@ fun CalSnapWheelPicker(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     itemHeight: Dp = 44.dp,
-    visibleCount: Int = 3,
+    visibleCount: Int = 5,
+    maskColor: Color = Color.Unspecified,
+    showSelectionBand: Boolean = true,
+    showEdgeMasks: Boolean = true,
 ) {
     val safeInitial = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+    val padItems = (visibleCount - 1) / 2
     val listState: LazyListState = rememberLazyListState(initialFirstVisibleItemIndex = safeInitial)
     val flingBehavior = rememberSnapFlingBehavior(
         lazyListState = listState,
@@ -614,59 +617,103 @@ fun CalSnapWheelPicker(
         }
     }
 
-    val padItems = (visibleCount - 1) / 2
+    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
+    val totalHeight = itemHeight * visibleCount
+    val maskHeight = itemHeight * padItems
+    val surfaceColor = if (maskColor != Color.Unspecified) maskColor
+        else MaterialTheme.colorScheme.surface
+
     Box(
-        modifier = modifier.height(itemHeight * visibleCount),
+        modifier = modifier.height(totalHeight),
         contentAlignment = Alignment.Center,
     ) {
-        // Subtle selection band to hint where the center row is (tinted
-        // surface + thin top/bottom separators). Kept light so the wheel
-        // still reads as "type only" like the PWA .drum-item.sel.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(itemHeight)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f))
-                .border(
-                    BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
-                    RoundedCornerShape(14.dp),
-                ),
-        )
+        if (showSelectionBand) {
+            // Subtle selection band to hint where the center row is (tinted
+            // surface + thin top/bottom separators). Kept light so the wheel
+            // still reads as "type only" like the PWA .drum-item.sel.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
+                    .border(
+                        BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
+                        RoundedCornerShape(12.dp),
+                    ),
+            )
+        }
+
         LazyColumn(
             state = listState,
             flingBehavior = flingBehavior,
+            contentPadding = PaddingValues(vertical = itemHeight * padItems),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item { Spacer(Modifier.height(itemHeight * padItems)) }
             itemsIndexed(items) { index, text ->
-                val distance = kotlin.math.abs(index - centerIndex).coerceAtMost(2)
-                val alpha = when (distance) {
-                    0 -> 1f
-                    1 -> 0.48f
-                    else -> 0.22f
+                val info = listState.layoutInfo
+                val viewportCenter = ((info.viewportStartOffset + info.viewportEndOffset) / 2).toFloat()
+                val itemInfo = info.visibleItemsInfo.firstOrNull { it.index == index }
+                val distancePx = if (itemInfo != null) {
+                    kotlin.math.abs((itemInfo.offset + itemInfo.size / 2f) - viewportCenter)
+                } else {
+                    Float.MAX_VALUE
                 }
-                val weight = if (distance == 0) FontWeight.ExtraBold else FontWeight.SemiBold
-                val fontSize = if (distance == 0) 20.sp else 15.sp
-                val letterSpacing = if (distance == 0) (-0.3).sp else 0.sp
+                val normalizedDist = (distancePx / itemHeightPx.coerceAtLeast(1f)).coerceIn(0f, 2.5f)
+
+                fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+                val alpha = lerp(1f, 0.18f, (normalizedDist / 2.5f).coerceIn(0f, 1f))
+                val fontSizeSp = lerp(21f, 18f, (normalizedDist / 1.2f).coerceIn(0f, 1f))
+                val isBold = normalizedDist < 0.5f
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(itemHeight),
+                        .height(itemHeight)
+                        .graphicsLayer { this.alpha = alpha },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text,
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = fontSize,
-                            fontWeight = weight,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-                            letterSpacing = letterSpacing,
+                        style = TextStyle(
+                            fontSize = fontSizeSp.sp,
+                            fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            letterSpacing = if (isBold) (-0.3).sp else 0.sp,
                         ),
                     )
                 }
             }
-            item { Spacer(Modifier.height(itemHeight * padItems)) }
+        }
+
+        if (showEdgeMasks) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(maskHeight)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to surfaceColor,
+                            0.2f to surfaceColor,
+                            1f to surfaceColor.copy(alpha = 0f),
+                        ),
+                    ),
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(maskHeight)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to surfaceColor.copy(alpha = 0f),
+                            0.8f to surfaceColor,
+                            1f to surfaceColor,
+                        ),
+                    ),
+            )
         }
     }
 }

@@ -39,7 +39,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -461,14 +460,7 @@ private fun DobPickerSheet(
     var month by remember(initial) { mutableStateOf(initial.month) }
     var year by remember(initial) { mutableStateOf(initial.year) }
 
-    // When month/year shifts to a shorter month, clamp the day so the wheel
-    // doesn't display an invalid combination.
-    LaunchedEffect(month, year) {
-        val maxD = maxDay(year, month)
-        if (day > maxD) day = maxD
-    }
-
-    val dayItems = remember(month, year) { (1..maxDay(year, month)).map { pad(it) } }
+    val dayItems = remember { (1..31).map { pad(it) } }
     val monthItems = remember { (1..12).map { monthName(it) } }
     val yearItems = remember { (maxBirthYear() downTo minBirthYear()).map { it.toString() } }
 
@@ -532,69 +524,157 @@ private fun DobPickerSheet(
                 }
             }
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            DobWheelColumn(
-                label = stringResource(R.string.onboarding_dob_day).uppercase(),
-                items = dayItems,
-                selectedIndex = (day - 1).coerceIn(0, dayItems.lastIndex),
-                onSelect = { idx -> day = (idx + 1).coerceIn(1, maxDay(year, month)) },
-                modifier = Modifier.weight(1f),
-            )
-            DobWheelColumn(
-                label = stringResource(R.string.onboarding_dob_month).uppercase(),
-                items = monthItems,
-                selectedIndex = (month - 1).coerceIn(0, monthItems.lastIndex),
-                onSelect = { idx -> month = (idx + 1).coerceIn(1, 12) },
-                modifier = Modifier.weight(1.55f),
-            )
-            DobWheelColumn(
-                label = stringResource(R.string.onboarding_dob_year).uppercase(),
-                items = yearItems,
-                selectedIndex = (maxBirthYear() - year).coerceIn(0, yearItems.lastIndex),
-                onSelect = { idx -> year = (maxBirthYear() - idx).coerceIn(minBirthYear(), maxBirthYear()) },
-                modifier = Modifier.weight(1f),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 6.dp),
+            ) {
+                DobWheelLabel(
+                    label = stringResource(R.string.onboarding_dob_day).uppercase(),
+                    modifier = Modifier.weight(1f),
+                )
+                DobWheelLabel(
+                    label = stringResource(R.string.onboarding_dob_month).uppercase(),
+                    modifier = Modifier.weight(1.4f),
+                )
+                DobWheelLabel(
+                    label = stringResource(R.string.onboarding_dob_year).uppercase(),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            DobWheelsRow(
+                dayItems = dayItems,
+                monthItems = monthItems,
+                yearItems = yearItems,
+                dayIndex = (day - 1).coerceIn(0, dayItems.lastIndex),
+                monthIndex = (month - 1).coerceIn(0, monthItems.lastIndex),
+                yearIndex = (maxBirthYear() - year).coerceIn(0, yearItems.lastIndex),
+                onDay = { idx -> day = (idx + 1).coerceIn(1, 31) },
+                onMonth = { idx -> month = (idx + 1).coerceIn(1, 12) },
+                onYear = { idx -> year = (maxBirthYear() - idx).coerceIn(minBirthYear(), maxBirthYear()) },
             )
         }
     }
 }
 
 @Composable
-private fun DobWheelColumn(
+private fun DobWheelLabel(
     label: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        label,
+        modifier = modifier,
+        style = TextStyle(
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
+private fun DobWheelsRow(
+    dayItems: List<String>,
+    monthItems: List<String>,
+    yearItems: List<String>,
+    dayIndex: Int,
+    monthIndex: Int,
+    yearIndex: Int,
+    onDay: (Int) -> Unit,
+    onMonth: (Int) -> Unit,
+    onYear: (Int) -> Unit,
+) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val itemHeight = 44.dp
+    val maskHeight = 88.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
+                .border(
+                    BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
+                    RoundedCornerShape(12.dp),
+                ),
+        )
+        Row(modifier = Modifier.fillMaxSize()) {
+            DobWheelColumn(
+                items = dayItems,
+                selectedIndex = dayIndex,
+                onSelect = onDay,
+                modifier = Modifier.weight(1f),
+            )
+            DobWheelColumn(
+                items = monthItems,
+                selectedIndex = monthIndex,
+                onSelect = onMonth,
+                modifier = Modifier.weight(1.4f),
+            )
+            DobWheelColumn(
+                items = yearItems,
+                selectedIndex = yearIndex,
+                onSelect = onYear,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(maskHeight)
+                .background(
+                    Brush.verticalGradient(
+                        0f to surfaceColor,
+                        0.2f to surfaceColor,
+                        1f to surfaceColor.copy(alpha = 0f),
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(maskHeight)
+                .background(
+                    Brush.verticalGradient(
+                        0f to surfaceColor.copy(alpha = 0f),
+                        0.8f to surfaceColor,
+                        1f to surfaceColor,
+                    ),
+                ),
+        )
+    }
+}
+
+@Composable
+private fun DobWheelColumn(
     items: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f))
-            .padding(horizontal = 6.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            label,
-            style = TextStyle(
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-        )
-        Spacer(Modifier.height(6.dp))
-        CalSnapWheelPicker(
-            items = items,
-            selectedIndex = selectedIndex,
-            onSelect = onSelect,
-            modifier = Modifier.fillMaxWidth(),
-            itemHeight = 44.dp,
-            visibleCount = 3,
-        )
-    }
+    CalSnapWheelPicker(
+        items = items,
+        selectedIndex = selectedIndex,
+        onSelect = onSelect,
+        modifier = modifier.fillMaxWidth(),
+        itemHeight = 44.dp,
+        visibleCount = 5,
+        showSelectionBand = false,
+        showEdgeMasks = false,
+    )
 }
 
 @Composable
