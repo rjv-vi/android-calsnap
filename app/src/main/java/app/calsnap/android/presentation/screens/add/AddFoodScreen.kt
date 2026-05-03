@@ -12,7 +12,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -356,39 +358,59 @@ private fun FavouritesTab(
 
 @Composable
 private fun FavouriteRow(entry: FoodLogEntity, onAdd: () -> Unit, onRemove: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f))
-            .calSnapClickable(pressedScale = 0.97f, onClick = onAdd)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)), shape)
+            .calSnapClickable(pressedScale = 0.98f, onClick = onAdd)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CalSnapIconTile(icon = "🍽️", size = 44.dp, background = CalSnapStreak.copy(alpha = 0.10f))
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(foodEmoji(entry.foodName), style = MaterialTheme.typography.titleMedium)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(entry.foodName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                entry.portion.orEmpty().ifBlank { "${entry.protein.toInt()} / ${entry.carbs.toInt()} / ${entry.fat.toInt()}${stringResource(R.string.unit_g)}" },
+                "${entry.calories} ${stringResource(R.string.unit_kcal)}" + entry.portion.orEmpty().let { if (it.isBlank()) "" else " · $it" },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${entry.calories}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Text(
+            "✕",
+            modifier = Modifier
+                .calSnapClickable(pressedScale = 0.85f, onClick = onRemove)
+                .padding(6.dp),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Black,
+        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.onSurface)
+                .calSnapClickable(pressedScale = 0.94f, onClick = onAdd)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
-                "✕",
-                modifier = Modifier
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.70f))
-                    .calSnapClickable(pressedScale = 0.90f, onClick = onRemove)
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Black,
+                "+ ${stringResource(R.string.nav_add)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.background,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -503,5 +525,17 @@ private fun MacroPill(label: String, value: Float, color: androidx.compose.ui.gr
     ) {
         Text(label, color = color, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
         Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+    }
+}
+
+private fun foodEmoji(name: String): String {
+    val lower = name.lowercase()
+    return when {
+        listOf("кофе", "чай", "вода", "сок", "молоко").any(lower::contains) -> "🥤"
+        listOf("кур", "мяс", "гов", "свин", "рыб").any(lower::contains) -> "🍗"
+        listOf("салат", "огур", "помид", "овощ").any(lower::contains) -> "🥗"
+        listOf("рис", "греч", "овся", "макарон").any(lower::contains) -> "🍚"
+        listOf("торт", "шокол", "печ", "морож").any(lower::contains) -> "🍰"
+        else -> "🍽️"
     }
 }

@@ -1,6 +1,6 @@
 package app.calsnap.android.presentation.screens.home
 
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -75,6 +75,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
+
+private val HomeEaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -468,6 +471,11 @@ private fun CalorieHeroCard(
     waterGoalMl: Int,
 ) {
     val remaining = goal - eaten
+    val eatenDisplay by animateIntAsState(
+        targetValue = eaten,
+        animationSpec = tween(520, easing = HomeEaseOut),
+        label = "homeCaloriesEaten",
+    )
     val shape = RoundedCornerShape(36.dp)
     Box(
         modifier = Modifier
@@ -501,7 +509,7 @@ private fun CalorieHeroCard(
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            "$eaten",
+                            "$eatenDisplay",
                             style = TextStyle(
                                 fontSize = 58.sp,
                                 fontWeight = FontWeight.Black,
@@ -574,6 +582,11 @@ private fun CalorieHeroCard(
 
 @Composable
 private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color, modifier: Modifier = Modifier) {
+    val valueDisplay by animateFloatAsState(
+        targetValue = value,
+        animationSpec = tween(420, easing = HomeEaseOut),
+        label = "homeMacroValue",
+    )
     Column(
         modifier = modifier
             .shadow(8.dp, RoundedCornerShape(18.dp), clip = false)
@@ -584,7 +597,7 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Text(
-                "${value.toInt()}${stringResource(R.string.unit_g)}",
+                "${valueDisplay.roundToInt()}${stringResource(R.string.unit_g)}",
                 color = color,
                 style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp),
             )
@@ -595,7 +608,7 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
             )
         }
         Spacer(Modifier.height(8.dp))
-        HomeLinearProgress(progress = value / goal.coerceAtLeast(1f), color = color, height = 3.dp)
+        HomeLinearProgress(progress = value / goal.coerceAtLeast(1f), color = color, height = 3.dp, startColor = color)
         Text(
             label.uppercase(),
             modifier = Modifier.padding(top = 6.dp),
@@ -613,7 +626,7 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
 private fun WaterStrip(waterMl: Int, goalMl: Int) {
     val waterDisplay by animateIntAsState(
         targetValue = waterMl,
-        animationSpec = tween(450, easing = FastOutSlowInEasing),
+        animationSpec = tween(500, easing = HomeEaseOut),
         label = "homeWaterInline",
     )
     val water = Color(0xFF3B82F6)
@@ -634,6 +647,8 @@ private fun WaterStrip(waterMl: Int, goalMl: Int) {
             color = water,
             height = 5.dp,
             trackColor = water.copy(alpha = 0.15f),
+            startColor = Color(0xFF60A5FA),
+            animationDurationMillis = 500,
             modifier = Modifier.weight(1f),
         )
         Text(
@@ -650,7 +665,7 @@ private fun CalorieRing(eaten: Int, goal: Int) {
     val target = (eaten.toFloat() / goal.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
     val progress by animateFloatAsState(
         targetValue = target,
-        animationSpec = tween(1000, easing = FastOutSlowInEasing),
+        animationSpec = tween(1000, easing = HomeEaseOut),
         label = "homeCalorieRing",
     )
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha())
@@ -665,7 +680,7 @@ private fun CalorieRing(eaten: Int, goal: Int) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                "${(progress * 100).toInt()}%",
+                "${(progress * 100).roundToInt()}%",
                 style = TextStyle(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
@@ -693,7 +708,14 @@ private fun HomeLinearProgress(
     height: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeF1Alpha()),
+    startColor: Color = color.copy(alpha = 0.82f),
+    animationDurationMillis: Int = 900,
 ) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(animationDurationMillis, easing = HomeEaseOut),
+        label = "homeLinearProgress",
+    )
     Box(
         modifier = modifier
             .height(height)
@@ -702,10 +724,10 @@ private fun HomeLinearProgress(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .fillMaxWidth(animatedProgress)
                 .height(height)
                 .clip(RoundedCornerShape(99.dp))
-                .background(Brush.horizontalGradient(listOf(color.copy(alpha = 0.82f), color))),
+                .background(Brush.horizontalGradient(listOf(startColor, color))),
         )
     }
 }

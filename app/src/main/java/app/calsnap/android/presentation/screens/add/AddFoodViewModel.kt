@@ -161,7 +161,7 @@ class AddFoodViewModel @Inject constructor(
 
     fun removeFavourite(entry: FoodLogEntity) {
         viewModelScope.launch {
-            foodLogRepository.update(entry.copy(favourite = false))
+            foodLogRepository.clearFavouritesLike(entry)
         }
     }
 }

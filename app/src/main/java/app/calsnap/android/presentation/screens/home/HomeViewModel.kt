@@ -55,7 +55,12 @@ class HomeViewModel @Inject constructor(
     private val apiKeyRevision = MutableStateFlow(0)
     private val selectedDayAndApiKey = combine(selectedDay, apiKeyRevision) { day, _ -> day }
     private val selectedEntries = selectedDay.flatMapLatest { day ->
-        logRepository.observeDay(day).catch { emit(emptyList()) }
+        combine(
+            logRepository.observeDay(day).catch { emit(emptyList()) },
+            logRepository.observeFavourites().catch { emit(emptyList()) },
+        ) { entries, favourites ->
+            entries.withFavouriteMarkers(favourites)
+        }
     }
 
     val ui: StateFlow<UiState> = combine(
@@ -101,7 +106,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun toggleFavourite(entry: FoodLogEntity) = viewModelScope.launch {
-        logRepository.update(entry.copy(favourite = !entry.favourite))
+        if (logRepository.hasFavouriteLike(entry)) {
+            logRepository.clearFavouritesLike(entry)
+        } else {
+            logRepository.update(entry.copy(favourite = true))
+        }
     }
 
     fun deleteEntry(entry: FoodLogEntity) = viewModelScope.launch {
@@ -112,4 +121,14 @@ class HomeViewModel @Inject constructor(
         runCatching { Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
+
+    private fun List<FoodLogEntity>.withFavouriteMarkers(favourites: List<FoodLogEntity>): List<FoodLogEntity> {
+        val favouriteKeys = favourites.map { it.favouriteKey() }.toSet()
+        return map { entry ->
+            val favourite = entry.favourite || entry.favouriteKey() in favouriteKeys
+            if (entry.favourite == favourite) entry else entry.copy(favourite = favourite)
+        }
+    }
+
+    private fun FoodLogEntity.favouriteKey(): Pair<String, Int> = foodName.trim().lowercase() to calories
 }

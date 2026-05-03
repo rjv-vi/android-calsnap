@@ -35,6 +35,12 @@ interface FoodLogDao {
     @Query("SELECT * FROM food_log WHERE favourite = 1 ORDER BY loggedAt DESC LIMIT 30")
     fun observeFavourites(): Flow<List<FoodLogEntity>>
 
+    @Query("SELECT COUNT(*) FROM food_log WHERE favourite = 1 AND lower(foodName) = lower(:foodName) AND calories = :calories")
+    suspend fun countFavouritesLike(foodName: String, calories: Int): Int
+
+    @Query("UPDATE food_log SET favourite = 0 WHERE favourite = 1 AND lower(foodName) = lower(:foodName) AND calories = :calories")
+    suspend fun clearFavouritesLike(foodName: String, calories: Int)
+
     /** Aggregate totals for the streak / progress views. */
     @Query(
         """
