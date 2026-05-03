@@ -33,6 +33,9 @@ interface WaterDao {
     @Delete
     suspend fun delete(entry: WaterEntity)
 
+    @Query("DELETE FROM water_log WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM water_log")
     suspend fun wipe()
 }

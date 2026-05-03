@@ -4,6 +4,7 @@ import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.domain.BmrCalculator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -67,5 +68,29 @@ class UserRepository @Inject constructor(
 
     suspend fun setDarkTheme(on: Boolean?) = prefs.setDarkTheme(on)
     suspend fun setLanguage(code: String)  = prefs.setLanguage(code)
+    suspend fun updateWeight(weightKg: Float) {
+        val current = profile.first() ?: return
+        val age = BmrCalculator.ageFromDob(current.dob)
+        val tdee = BmrCalculator.tdee(
+            gender = current.gender,
+            weightKg = weightKg,
+            heightCm = current.heightCm,
+            ageYears = age,
+            activity = current.activity,
+        )
+        val kcal = (tdee + current.goal.kcalDelta).coerceAtLeast(1200)
+        val proteinG = (weightKg * 1.8f).toInt()
+        val fatG = ((kcal * 0.25f) / 9f).toInt()
+        val carbsG = ((kcal - proteinG * 4 - fatG * 9) / 4f).toInt()
+        prefs.saveProfile(
+            current.copy(
+                weightKg = weightKg,
+                kcalGoal = kcal,
+                proteinGoal = proteinG,
+                carbsGoal = carbsG,
+                fatGoal = fatG,
+            ),
+        )
+    }
     suspend fun wipe()                     = prefs.wipe()
 }

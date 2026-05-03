@@ -32,6 +32,7 @@ class WaterRepository @Inject constructor(
     }
 
     suspend fun delete(entry: WaterEntity) = dao.delete(entry)
+    suspend fun deleteById(id: Long) = dao.deleteById(id)
     suspend fun wipe() = dao.wipe()
 
     private fun dayBounds(day: LocalDate): Pair<Long, Long> {
