@@ -24,6 +24,8 @@
     <string name="home_water_title">Water today</string>
     <string name="home_api_bar_title">Gemini API key needed</string>
     <string name="home_api_bar_sub">Tap → get a free key in 1 min</string>
+    <string name="home_api_sheet_title">🔑 Gemini API key</string>
+    <string name="home_api_sheet_sub_prefix">Get a free key at</string>
     <string name="meal_breakfast">Breakfast</string>
     <string name="meal_lunch">Lunch</string>
     <string name="meal_snack">Snack</string>
@@ -174,6 +176,7 @@
     <string name="ai_prompt_snack">⚡ Quick snack</string>
     <string name="ai_prompt_cut">🥗 Calorie deficit</string>
 
+    <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="done">Done</string>
     <string name="close">Close</string>

@@ -27,6 +27,8 @@
     <string name="home_water_title">Вода сегодня</string>
     <string name="home_api_bar_title">Нужен API ключ Gemini</string>
     <string name="home_api_bar_sub">Нажми → получи бесплатно за 1 мин</string>
+    <string name="home_api_sheet_title">🔑 API ключ Gemini</string>
+    <string name="home_api_sheet_sub_prefix">Получи бесплатный ключ на</string>
     <string name="meal_breakfast">Завтрак</string>
     <string name="meal_lunch">Обед</string>
     <string name="meal_snack">Перекус</string>
@@ -184,6 +186,7 @@
     <string name="ai_prompt_cut">🥗 Дефицит калорий</string>
 
     <!-- Generic -->
+    <string name="save">Сохранить</string>
     <string name="cancel">Отмена</string>
     <string name="done">Готово</string>
     <string name="close">Закрыть</string>

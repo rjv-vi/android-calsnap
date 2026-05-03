@@ -22,11 +22,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,11 +44,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,20 +63,29 @@ import app.calsnap.android.R
 import app.calsnap.android.data.database.entity.FoodLogEntity
 import app.calsnap.android.data.model.MealType
 import app.calsnap.android.presentation.components.AnimatedSection
+import app.calsnap.android.presentation.components.CalSnapPillTextField
+import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.calSnapClickable
 import kotlinx.coroutines.delay
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun HomeScreen(
     onAddFood: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val goal = ui.profile?.kcalGoal ?: 2000
+    var showApiSheet by remember { mutableStateOf(false) }
+    val apiSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     CalSnapScreen(glow = false) {
         Column(
@@ -75,7 +96,7 @@ fun HomeScreen(
         ) {
             AnimatedSection(0) { HomeHeader(ui) }
             if (!ui.hasApiKey) {
-                AnimatedSection(1) { ApiMissingBar() }
+                AnimatedSection(1) { ApiMissingBar(onClick = { showApiSheet = true }) }
             }
             AnimatedSection(2) { CalendarStrip(ui.calendarDays, ui.selectedDay, goal, viewModel::selectDay) }
             AnimatedSection(3) {
@@ -92,14 +113,40 @@ fun HomeScreen(
                     waterGoalMl = ui.waterGoalMl,
                 )
             }
-            AnimatedSection(4) { TodaySection(ui, onAddFood) }
+            AnimatedSection(4) {
+                TodaySection(
+                    ui = ui,
+                    onAddFood = onAddFood,
+                    onToggleFavourite = viewModel::toggleFavourite,
+                    onDelete = viewModel::deleteEntry,
+                )
+            }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+
+    if (showApiSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showApiSheet = false },
+            sheetState = apiSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = Color.Black.copy(alpha = 0.45f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        ) {
+            ApiKeySheet(
+                onSave = { key ->
+                    viewModel.saveGeminiKey(key)
+                    showApiSheet = false
+                },
+                onCancel = { showApiSheet = false },
+            )
         }
     }
 }
 
 @Composable
-private fun ApiMissingBar() {
+private fun ApiMissingBar(onClick: () -> Unit) {
     val warn = homeWarnColor()
     Row(
         modifier = Modifier
@@ -108,7 +155,7 @@ private fun ApiMissingBar() {
             .clip(RoundedCornerShape(20.dp))
             .background(warn.copy(alpha = 0.07f))
             .border(BorderStroke(1.5.dp, warn.copy(alpha = 0.18f)), RoundedCornerShape(20.dp))
-            .calSnapClickable(pressedScale = 0.98f, onClick = {})
+            .calSnapClickable(pressedScale = 0.98f, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -130,6 +177,83 @@ private fun ApiMissingBar() {
             )
         }
         Text("›", style = TextStyle(fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface))
+    }
+}
+
+@Composable
+private fun ApiKeySheet(
+    onSave: (String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var apiKey by remember { mutableStateOf("") }
+    val uriHandler = LocalUriHandler.current
+    val accent = if (isHomeDark()) Color(0xFFFF6618) else Color(0xFFFF5500)
+    val helperPrefix = stringResource(R.string.home_api_sheet_sub_prefix)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 28.dp)
+            .padding(top = 10.dp, bottom = 30.dp),
+    ) {
+        Text(
+            stringResource(R.string.home_api_sheet_title),
+            style = TextStyle(
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.7).sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+        )
+        Spacer(Modifier.height(28.dp))
+        Text(
+            text = buildAnnotatedString {
+                append(helperPrefix)
+                append(" ")
+                withStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.SemiBold,
+                        color = accent,
+                        textDecoration = TextDecoration.Underline,
+                    ),
+                ) {
+                    append("aistudio.google.com/apikey")
+                }
+            },
+            modifier = Modifier.calSnapClickable(pressedScale = 0.98f) {
+                runCatching { uriHandler.openUri("https://aistudio.google.com/apikey") }
+            },
+            style = TextStyle(
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha()),
+                lineHeight = 19.sp,
+            ),
+        )
+        Spacer(Modifier.height(16.dp))
+        CalSnapPillTextField(
+            value = apiKey,
+            onValueChange = { apiKey = it },
+            placeholder = "AIza...",
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 58.dp,
+        )
+        Spacer(Modifier.height(14.dp))
+        CalSnapPrimaryButton(
+            onClick = { onSave(apiKey.trim()) },
+            enabled = apiKey.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+            height = 58.dp,
+        ) {
+            Text(stringResource(R.string.save), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        }
+        Spacer(Modifier.height(10.dp))
+        CalSnapSecondaryButton(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth(),
+            height = 58.dp,
+        ) {
+            Text(stringResource(R.string.cancel), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold))
+        }
     }
 }
 
@@ -587,7 +711,12 @@ private fun HomeLinearProgress(
 }
 
 @Composable
-private fun TodaySection(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
+private fun TodaySection(
+    ui: HomeViewModel.UiState,
+    onAddFood: () -> Unit,
+    onToggleFavourite: (FoodLogEntity) -> Unit,
+    onDelete: (FoodLogEntity) -> Unit,
+) {
     Column {
         Row(
             Modifier
@@ -614,7 +743,13 @@ private fun TodaySection(ui: HomeViewModel.UiState, onAddFood: () -> Unit) {
             orderedMeals.forEach { meal ->
                 val entries = ui.entries.filter { it.mealType == meal }
                 if (entries.isNotEmpty()) {
-                    MealGroup(meal, entries, withDivider = renderedGroups > 0)
+                    MealGroup(
+                        meal = meal,
+                        entries = entries,
+                        withDivider = renderedGroups > 0,
+                        onToggleFavourite = onToggleFavourite,
+                        onDelete = onDelete,
+                    )
                     renderedGroups += 1
                 }
             }
@@ -643,7 +778,13 @@ private fun EmptyToday(onAddFood: () -> Unit) {
 }
 
 @Composable
-private fun MealGroup(meal: MealType, entries: List<FoodLogEntity>, withDivider: Boolean) {
+private fun MealGroup(
+    meal: MealType,
+    entries: List<FoodLogEntity>,
+    withDivider: Boolean,
+    onToggleFavourite: (FoodLogEntity) -> Unit,
+    onDelete: (FoodLogEntity) -> Unit,
+) {
     Column(modifier = Modifier.padding(bottom = 2.dp)) {
         if (withDivider) {
             Box(
@@ -685,13 +826,25 @@ private fun MealGroup(meal: MealType, entries: List<FoodLogEntity>, withDivider:
             )
         }
         entries.forEachIndexed { index, entry ->
-            FoodRow(entry, index = index, count = entries.size)
+            FoodRow(
+                entry = entry,
+                index = index,
+                count = entries.size,
+                onToggleFavourite = onToggleFavourite,
+                onDelete = onDelete,
+            )
         }
     }
 }
 
 @Composable
-private fun FoodRow(entry: FoodLogEntity, index: Int, count: Int) {
+private fun FoodRow(
+    entry: FoodLogEntity,
+    index: Int,
+    count: Int,
+    onToggleFavourite: (FoodLogEntity) -> Unit,
+    onDelete: (FoodLogEntity) -> Unit,
+) {
     val shape = when {
         count == 1 -> RoundedCornerShape(20.dp)
         index == 0 -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
@@ -730,7 +883,7 @@ private fun FoodRow(entry: FoodLogEntity, index: Int, count: Int) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                entry.portion.orEmpty().ifBlank { "—" },
+                foodSubtitle(entry),
                 style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -741,7 +894,7 @@ private fun FoodRow(entry: FoodLogEntity, index: Int, count: Int) {
                 Text("${stringResource(R.string.macro_f_short)}:${entry.fat.toInt()}${stringResource(R.string.unit_g)}", style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = macroFatColor()))
             }
         }
-        Column(horizontalAlignment = Alignment.End) {
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 2.dp)) {
             Text(
                 "${entry.calories}",
                 style = TextStyle(
@@ -756,6 +909,39 @@ private fun FoodRow(entry: FoodLogEntity, index: Int, count: Int) {
                 style = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha())),
             )
         }
+        Text(
+            if (entry.favourite) "⭐" else "☆",
+            modifier = Modifier
+                .calSnapClickable(pressedScale = 1.4f) { onToggleFavourite(entry) }
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            style = TextStyle(
+                fontSize = 16.sp,
+                color = if (entry.favourite) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha()),
+            ),
+        )
+        Box(
+            modifier = Modifier
+                .calSnapClickable(pressedScale = 0.75f) { onDelete(entry) }
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            TrashIcon()
+        }
+    }
+}
+
+@Composable
+private fun TrashIcon() {
+    val color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT2Alpha())
+    Canvas(modifier = Modifier.size(15.dp)) {
+        val stroke = 1.8.dp.toPx()
+        drawLine(color, Offset(size.width * 0.15f, size.height * 0.23f), Offset(size.width * 0.85f, size.height * 0.23f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.36f, size.height * 0.10f), Offset(size.width * 0.64f, size.height * 0.10f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.28f, size.height * 0.28f), Offset(size.width * 0.34f, size.height * 0.88f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.72f, size.height * 0.28f), Offset(size.width * 0.66f, size.height * 0.88f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.42f, size.height * 0.46f), Offset(size.width * 0.42f, size.height * 0.74f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.58f, size.height * 0.46f), Offset(size.width * 0.58f, size.height * 0.74f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.34f, size.height * 0.88f), Offset(size.width * 0.66f, size.height * 0.88f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
 
@@ -790,6 +976,14 @@ private fun weekdayLabel(date: LocalDate): String {
         java.time.DayOfWeek.SATURDAY -> if (ru) "СБ" else "SAT"
         java.time.DayOfWeek.SUNDAY -> if (ru) "ВС" else "SUN"
     }
+}
+
+private fun foodSubtitle(entry: FoodLogEntity): String {
+    val time = Instant.ofEpochMilli(entry.loggedAt)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()))
+    val portion = entry.portion.orEmpty().trim()
+    return if (portion.isBlank()) time else "$time · $portion"
 }
 
 @Composable

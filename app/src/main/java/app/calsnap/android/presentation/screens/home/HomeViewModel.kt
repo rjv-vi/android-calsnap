@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,9 +26,9 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     userRepository: UserRepository,
-    logRepository: FoodLogRepository,
+    private val logRepository: FoodLogRepository,
     waterRepository: WaterRepository,
-    keyStore: SecureKeyStore,
+    private val keyStore: SecureKeyStore,
 ) : ViewModel() {
 
     data class UiState(
@@ -51,6 +52,8 @@ class HomeViewModel @Inject constructor(
     )
 
     private val selectedDay = MutableStateFlow(LocalDate.now())
+    private val apiKeyRevision = MutableStateFlow(0)
+    private val selectedDayAndApiKey = combine(selectedDay, apiKeyRevision) { day, _ -> day }
     private val selectedEntries = selectedDay.flatMapLatest { day ->
         logRepository.observeDay(day).catch { emit(emptyList()) }
     }
@@ -60,7 +63,7 @@ class HomeViewModel @Inject constructor(
         selectedEntries,
         waterRepository.observeToday().catch { emit(emptyList()) },
         logRepository.observeLastDays(14).catch { emit(emptyList()) },
-        selectedDay,
+        selectedDayAndApiKey,
     ) { profile, entries, water, lastDays, selected ->
         val waterGoal = ((profile?.weightKg ?: 70f) * 35f).toInt().coerceIn(1500, 3500)
         val today = LocalDate.now()
@@ -82,7 +85,7 @@ class HomeViewModel @Inject constructor(
             totalFat      = entries.fold(0f) { acc, e -> acc + e.fat },
             waterMl       = water.sumOf { it.milliliters },
             waterGoalMl   = waterGoal,
-            hasApiKey     = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false),
+            hasApiKey     = safeHasGeminiKey(),
         )
     }.catch {
         emit(UiState(selectedDay = selectedDay.value, hasApiKey = false))
@@ -92,6 +95,21 @@ class HomeViewModel @Inject constructor(
         selectedDay.update { day }
     }
 
+    fun saveGeminiKey(apiKey: String) {
+        keyStore.setGeminiApiKey(apiKey)
+        apiKeyRevision.update { it + 1 }
+    }
+
+    fun toggleFavourite(entry: FoodLogEntity) = viewModelScope.launch {
+        logRepository.update(entry.copy(favourite = !entry.favourite))
+    }
+
+    fun deleteEntry(entry: FoodLogEntity) = viewModelScope.launch {
+        logRepository.delete(entry)
+    }
+
     private fun FoodLogEntity.localDateOrNull(): LocalDate? =
         runCatching { Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
+
+    private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 }
