@@ -37,7 +37,7 @@ class AiChatViewModel @Inject constructor(
 
     private val _ui = MutableStateFlow(
         UiState(
-            hasApiKey = keyStore.hasGeminiKey(),
+            hasApiKey = safeHasGeminiKey(),
             messages = listOf(ChatMessage("Привет! Я помогу разобрать питание, воду и цели на сегодня.", false)),
         ),
     )
@@ -81,5 +81,7 @@ class AiChatViewModel @Inject constructor(
         }
     }
 
-    fun refreshKeyState() = _ui.update { it.copy(hasApiKey = keyStore.hasGeminiKey()) }
+    fun refreshKeyState() = _ui.update { it.copy(hasApiKey = safeHasGeminiKey()) }
+
+    private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 }

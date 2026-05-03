@@ -14,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,7 +48,7 @@ class AddFoodViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            foodLogRepository.observeFavourites().collect { favourites ->
+            foodLogRepository.observeFavourites().catch { emit(emptyList()) }.collect { favourites ->
                 _ui.update { it.copy(favourites = favourites) }
             }
         }
@@ -121,21 +122,25 @@ class AddFoodViewModel @Inject constructor(
     fun confirmAndLog(result: FoodAnalysisResult, source: FoodLogEntity.Source, saveFavourite: Boolean = false) {
         val now = LocalDateTime.now()
         viewModelScope.launch {
-            foodLogRepository.add(
-                FoodLogEntity(
-                    loggedAt  = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                    foodName  = result.food,
-                    portion   = result.portion,
-                    calories  = result.calories,
-                    protein   = result.protein,
-                    fat       = result.fat,
-                    carbs     = result.carbs,
-                    mealType  = MealType.forHour(now.hour),
-                    ingredients = result.ingredients.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                    source    = source,
-                    favourite = saveFavourite,
-                ),
-            )
+            runCatching {
+                foodLogRepository.add(
+                    FoodLogEntity(
+                        loggedAt  = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                        foodName  = result.food,
+                        portion   = result.portion,
+                        calories  = result.calories,
+                        protein   = result.protein,
+                        fat       = result.fat,
+                        carbs     = result.carbs,
+                        mealType  = MealType.forHour(now.hour),
+                        ingredients = result.ingredients.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                        source    = source,
+                        favourite = saveFavourite,
+                    ),
+                )
+            }.onFailure { error ->
+                _ui.update { it.copy(error = error.message) }
+            }
         }
     }
 

@@ -11,6 +11,7 @@ import app.calsnap.android.data.repository.WaterRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,18 +51,22 @@ class HomeViewModel @Inject constructor(
     )
 
     private val selectedDay = MutableStateFlow(LocalDate.now())
-    private val selectedEntries = selectedDay.flatMapLatest(logRepository::observeDay)
+    private val selectedEntries = selectedDay.flatMapLatest { day ->
+        logRepository.observeDay(day).catch { emit(emptyList()) }
+    }
 
     val ui: StateFlow<UiState> = combine(
-        userRepository.profile,
+        userRepository.profile.catch { emit(null) },
         selectedEntries,
-        waterRepository.observeToday(),
-        logRepository.observeLastDays(7),
+        waterRepository.observeToday().catch { emit(emptyList()) },
+        logRepository.observeLastDays(7).catch { emit(emptyList()) },
         selectedDay,
     ) { profile, entries, water, lastDays, selected ->
         val waterGoal = ((profile?.weightKg ?: 70f) * 35f).toInt().coerceIn(1500, 3500)
         val today = LocalDate.now()
-        val grouped = lastDays.groupBy { it.localDate() }
+        val grouped = lastDays.mapNotNull { entry ->
+            entry.localDateOrNull()?.let { date -> date to entry }
+        }.groupBy({ it.first }, { it.second })
         UiState(
             profile       = profile,
             entries       = entries,
@@ -79,12 +84,14 @@ class HomeViewModel @Inject constructor(
             waterGoalMl   = waterGoal,
             hasApiKey     = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false),
         )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, UiState())
+    }.catch {
+        emit(UiState(selectedDay = selectedDay.value, hasApiKey = false))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
     fun selectDay(day: LocalDate) {
         selectedDay.update { day }
     }
 
-    private fun FoodLogEntity.localDate(): LocalDate =
-        Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+    private fun FoodLogEntity.localDateOrNull(): LocalDate? =
+        runCatching { Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
 }

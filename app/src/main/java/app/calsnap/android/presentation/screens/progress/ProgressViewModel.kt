@@ -14,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -51,14 +52,16 @@ class ProgressViewModel @Inject constructor(
     private val weightDraft = MutableStateFlow("")
 
     val ui: StateFlow<UiState> = combine(
-        userRepository.profile,
-        foodLogRepository.observeLastDays(28),
-        waterRepository.observeToday(),
-        weightRepository.observeAll(),
+        userRepository.profile.catch { emit(null) },
+        foodLogRepository.observeLastDays(28).catch { emit(emptyList()) },
+        waterRepository.observeToday().catch { emit(emptyList()) },
+        weightRepository.observeAll().catch { emit(emptyList()) },
         weightDraft,
     ) { profile, logs, water, weights, draft ->
         val today = LocalDate.now()
-        val grouped = logs.groupBy { it.localDate() }
+        val grouped = logs.mapNotNull { entry ->
+            entry.localDateOrNull()?.let { date -> date to entry }
+        }.groupBy({ it.first }, { it.second })
         val daySummaries = (27L downTo 0L).map { offset ->
             val date = today.minusDays(offset)
             val entries = grouped[date].orEmpty()
@@ -84,10 +87,12 @@ class ProgressViewModel @Inject constructor(
             weights = weights,
             weightDraft = draft,
         )
+    }.catch {
+        emit(UiState(weightDraft = weightDraft.value))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
     fun addWater(milliliters: Int) = viewModelScope.launch {
-        waterRepository.add(milliliters)
+        runCatching { waterRepository.add(milliliters) }
     }
 
     fun updateWeightDraft(value: String) {
@@ -97,11 +102,11 @@ class ProgressViewModel @Inject constructor(
     fun saveWeight() {
         val kg = weightDraft.value.toFloatOrNull() ?: return
         viewModelScope.launch {
-            weightRepository.add(kg)
-            weightDraft.value = ""
+            runCatching { weightRepository.add(kg) }
+                .onSuccess { weightDraft.value = "" }
         }
     }
 
-    private fun FoodLogEntity.localDate(): LocalDate =
-        Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+    private fun FoodLogEntity.localDateOrNull(): LocalDate? =
+        runCatching { Instant.ofEpochMilli(loggedAt).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
 }
