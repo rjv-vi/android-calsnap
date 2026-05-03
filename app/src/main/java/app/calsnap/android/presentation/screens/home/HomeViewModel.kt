@@ -3,6 +3,7 @@ package app.calsnap.android.presentation.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.calsnap.android.data.database.entity.FoodLogEntity
+import app.calsnap.android.data.model.MealType
 import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.repository.FoodLogRepository
