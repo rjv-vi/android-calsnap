@@ -48,7 +48,7 @@ fun CalSnapNavHost(
     var showAddSheet by remember { mutableStateOf(false) }
     val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val showBottomBar = currentRoute in Screen.bottomBar.map { it.route }
+    val showBottomBar = currentRoute in Screen.bottomBarRoutes
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

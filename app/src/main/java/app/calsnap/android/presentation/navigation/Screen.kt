@@ -14,6 +14,7 @@ sealed class Screen(val route: String, val deepLink: String? = null) {
 
     companion object {
         /** All bottom-nav destinations (excludes onboarding / modal sheets). */
-        val bottomBar = listOf(Home, Progress, Add, Ai, Settings)
+        val bottomBarRoutes: Set<String>
+            get() = setOf("home", "progress", "add", "ai", "settings")
     }
 }
