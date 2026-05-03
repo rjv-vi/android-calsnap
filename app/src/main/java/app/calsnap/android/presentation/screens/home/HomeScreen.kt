@@ -12,6 +12,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -45,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -342,9 +346,12 @@ private fun FoodDetailSheet(
     onServingsChange: (Float) -> Unit,
 ) {
     val servings = entry.servings.takeIf { it > 0f } ?: 1f
+    val sheetMaxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.88f
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(max = sheetMaxHeight)
+            .verticalScroll(rememberScrollState())
             .padding(bottom = 32.dp),
     ) {
         Box(
@@ -477,32 +484,52 @@ private fun DetailMacroTile(label: String, value: Float, color: Color, modifier:
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun IngredientsBlock(ingredients: String) {
+    val items = remember(ingredients) {
+        ingredients
+            .split(Regex("[,;\\n•]+"))
+            .map { it.trim().trim('-', '—') }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+    }
+    if (items.isEmpty()) return
+    val visibleItems = items.take(12)
+    val hiddenCount = items.size - visibleItems.size
     Column(modifier = Modifier.padding(top = 18.dp, bottom = 8.dp)) {
         Text(
             stringResource(R.string.food_detail_ingredients),
             style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
         )
-        ingredients.split(",")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .forEach { ingredient ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 9.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(ingredient, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface))
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())),
-                )
-            }
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            visibleItems.forEach { ingredient -> IngredientChip(ingredient) }
+            if (hiddenCount > 0) IngredientChip("+$hiddenCount")
+        }
+    }
+}
+
+@Composable
+private fun IngredientChip(text: String) {
+    Box(
+        modifier = Modifier
+            .widthIn(max = 154.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(homeSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(999.dp))
+            .padding(horizontal = 11.dp, vertical = 7.dp),
+    ) {
+        Text(
+            text,
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha())),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

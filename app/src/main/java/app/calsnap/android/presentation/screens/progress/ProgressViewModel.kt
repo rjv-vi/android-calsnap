@@ -55,6 +55,7 @@ class ProgressViewModel @Inject constructor(
 
     data class WeightPoint(
         val date: LocalDate,
+        val loggedAt: Long,
         val weightKg: Float,
     )
 
@@ -149,8 +150,10 @@ class ProgressViewModel @Inject constructor(
             latestWeightKg = latestWeight,
             previousWeightKg = previousWeight,
             weightPoints = weights.take(30).mapNotNull { entity ->
-                entity.localDateOrNull()?.let { WeightPoint(date = it, weightKg = entity.weightKg) }
-            }.sortedBy { it.date },
+                entity.localDateOrNull()?.let {
+                    WeightPoint(date = it, loggedAt = entity.loggedAt, weightKg = entity.weightKg)
+                }
+            }.sortedBy { it.loggedAt },
             weightDraft = draft,
         )
     }.catch {
