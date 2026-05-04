@@ -6,6 +6,7 @@ import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.data.model.UserProfile
+import app.calsnap.android.domain.BmrCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,6 +88,22 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(code: String)  = viewModelScope.launch { prefs.setLanguage(code) }
     fun setSoundOn(on: Boolean) = viewModelScope.launch { prefs.setSoundOn(on) }
     fun setHapticOn(on: Boolean) = viewModelScope.launch { prefs.setHapticOn(on) }
+    fun updateProfile(recalculateTargets: Boolean = false, update: (UserProfile) -> UserProfile) {
+        viewModelScope.launch {
+            val current = _ui.value.profile ?: return@launch
+            val updated = update(current)
+            prefs.saveProfile(if (recalculateTargets) updated.withCalculatedTargets() else updated)
+        }
+    }
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
+
+    private fun UserProfile.withCalculatedTargets(): UserProfile {
+        val age = BmrCalculator.ageFromDob(dob)
+        val kcal = (BmrCalculator.tdee(gender, weightKg, heightCm, age, activity) + goal.kcalDelta).coerceAtLeast(1200)
+        val proteinG = (weightKg * 1.8f).toInt()
+        val fatG = ((kcal * 0.25f) / 9f).toInt()
+        val carbsG = ((kcal - proteinG * 4 - fatG * 9) / 4f).toInt()
+        return copy(kcalGoal = kcal, proteinGoal = proteinG, carbsGoal = carbsG, fatGoal = fatG)
+    }
 }
