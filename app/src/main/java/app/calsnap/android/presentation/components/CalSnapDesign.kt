@@ -205,8 +205,7 @@ fun CalSnapIconTile(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(size / 3f))
-            .background(background)
-            .border(BorderStroke(0.5.dp, CalSnapStreak.copy(alpha = 0.18f)), RoundedCornerShape(size / 3f)),
+            .background(background),
         contentAlignment = Alignment.Center,
     ) {
         Text(icon, style = MaterialTheme.typography.headlineSmall)
