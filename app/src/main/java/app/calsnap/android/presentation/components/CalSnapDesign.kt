@@ -86,9 +86,12 @@ import kotlinx.coroutines.delay
 fun Modifier.calSnapClickable(
     enabled: Boolean = true,
     pressedScale: Float = 0.985f,
+    sound: CalSnapSoundEffect? = CalSnapSoundEffect.ButtonTap,
+    haptic: CalSnapHapticEffect? = CalSnapHapticEffect.Light,
     onClick: () -> Unit,
 ): Modifier = composed {
     val interactionSource = remember { MutableInteractionSource() }
+    val effects = LocalCalSnapEffects.current
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled) pressedScale else 1f,
@@ -104,7 +107,11 @@ fun Modifier.calSnapClickable(
             interactionSource = interactionSource,
             indication = null,
             enabled = enabled,
-            onClick = onClick,
+            onClick = {
+                haptic?.let(effects.haptic::play)
+                sound?.let(effects.sound::play)
+                onClick()
+            },
         )
 }
 
@@ -604,8 +611,13 @@ fun CalSnapWheelPicker(
             }
         }
     }
+    val effects = LocalCalSnapEffects.current
     LaunchedEffect(centerIndex, items.size) {
-        if (centerIndex != selectedIndex) onSelect(centerIndex)
+        if (centerIndex != selectedIndex) {
+            effects.haptic.play(CalSnapHapticEffect.Tick)
+            effects.sound.play(CalSnapSoundEffect.DrumTick)
+            onSelect(centerIndex)
+        }
     }
     // If an outside caller jumps selection (e.g. year changed and days
     // re-clamped), bring the wheel back to that index.

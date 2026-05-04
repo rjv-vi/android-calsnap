@@ -17,6 +17,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.repository.UserRepository
+import app.calsnap.android.presentation.components.CalSnapEffectsProvider
+import app.calsnap.android.presentation.components.CalSnapFeedbackHost
 import app.calsnap.android.presentation.navigation.CalSnapNavHost
 import app.calsnap.android.presentation.navigation.Screen
 import app.calsnap.android.ui.theme.CalSnapTheme
@@ -46,11 +48,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val darkOverride by prefs.darkTheme.collectAsState(initial = null)
+            val soundOn by prefs.soundOn.collectAsState(initial = true)
+            val hapticOn by prefs.hapticOn.collectAsState(initial = true)
             val systemDark = isSystemInDarkTheme()
             CalSnapTheme(darkTheme = darkOverride ?: systemDark, dynamicColor = false) {
-                val start by appState.startDestination.collectAsState()
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    start?.let { CalSnapNavHost(startDestination = it) }
+                CalSnapEffectsProvider(soundOn = soundOn, hapticOn = hapticOn) {
+                    CalSnapFeedbackHost {
+                        val start by appState.startDestination.collectAsState()
+                        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                            start?.let { CalSnapNavHost(startDestination = it) }
+                        }
+                    }
                 }
             }
         }

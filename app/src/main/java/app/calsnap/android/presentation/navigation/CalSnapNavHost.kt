@@ -17,6 +17,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,7 +30,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapBottomBar
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.screens.add.AddFoodScreen
 import app.calsnap.android.presentation.screens.ai.AiChatScreen
 import app.calsnap.android.presentation.screens.home.HomeScreen
@@ -47,8 +50,13 @@ fun CalSnapNavHost(
     val currentRoute = backStack?.destination?.route
     var showAddSheet by remember { mutableStateOf(false) }
     val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val effects = LocalCalSnapEffects.current
 
     val showBottomBar = currentRoute in Screen.bottomBarRoutes
+
+    LaunchedEffect(showAddSheet) {
+        if (showAddSheet) effects.sound.play(CalSnapSoundEffect.SheetOpen)
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -83,14 +91,23 @@ fun CalSnapNavHost(
 
     if (showAddSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showAddSheet = false },
+            onDismissRequest = {
+                effects.sound.play(CalSnapSoundEffect.SheetClose)
+                showAddSheet = false
+            },
             sheetState = addSheetState,
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
             scrimColor = Color.Black.copy(alpha = 0.42f),
             tonalElevation = 0.dp,
             shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
         ) {
-            AddFoodScreen(onDismiss = { showAddSheet = false }, sheetMode = true)
+            AddFoodScreen(
+                onDismiss = {
+                    effects.sound.play(CalSnapSoundEffect.SheetClose)
+                    showAddSheet = false
+                },
+                sheetMode = true,
+            )
         }
     }
 }

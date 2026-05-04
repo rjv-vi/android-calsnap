@@ -10,13 +10,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,6 +65,8 @@ fun CalSnapBottomBar(
         BottomItem(Screen.Ai.route, stringResource(R.string.nav_ai), Icons.Default.ChatBubble),
         BottomItem(Screen.Settings.route, stringResource(R.string.nav_settings), Icons.Default.Settings),
     )
+    val selectedIndex = items.indexOfFirst { it.route == currentRoute }.takeIf { it >= 0 } ?: 0
+    val showPill = !items[selectedIndex].prominent
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(0.dp),
@@ -70,29 +75,54 @@ fun CalSnapBottomBar(
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(66.dp)
                 .padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            items.forEach { item ->
-                if (item.prominent) {
-                    CalSnapAddNavItem(
-                        item = item,
-                        selected = currentRoute == item.route,
-                        onClick = { onNavigate(item.route) },
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    CalSnapNavItem(
-                        item = item,
-                        selected = currentRoute == item.route,
-                        onClick = { onNavigate(item.route) },
-                        modifier = Modifier.weight(1f),
-                    )
+            val segmentWidth = maxWidth / items.size.toFloat()
+            val pillWidth = segmentWidth * 0.80f
+            val pillX by animateDpAsState(
+                targetValue = segmentWidth * selectedIndex.toFloat() + segmentWidth * 0.10f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "navPillX",
+            )
+            val pillAlpha by animateFloatAsState(
+                targetValue = if (showPill) 1f else 0f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                label = "navPillAlpha",
+            )
+            Box(
+                modifier = Modifier
+                    .offset(x = pillX, y = 4.dp)
+                    .width(pillWidth)
+                    .height(46.dp)
+                    .graphicsLayer { alpha = pillAlpha }
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = if (MaterialTheme.colorScheme.background.luminance() < 0.25f) 0.09f else 0.07f)),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                items.forEach { item ->
+                    if (item.prominent) {
+                        CalSnapAddNavItem(
+                            item = item,
+                            selected = currentRoute == item.route,
+                            onClick = { onNavigate(item.route) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        CalSnapNavItem(
+                            item = item,
+                            selected = currentRoute == item.route,
+                            onClick = { onNavigate(item.route) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -110,15 +140,6 @@ private fun CalSnapNavItem(
         targetValue = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "navColor",
     )
-    val bg by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.085f) else Color.Transparent,
-        label = "navBg",
-    )
-    val pillWidth by animateDpAsState(
-        targetValue = if (selected) 48.dp else 40.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "navPillWidth",
-    )
     val iconScale by animateFloatAsState(
         targetValue = if (selected) 1.06f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -126,16 +147,14 @@ private fun CalSnapNavItem(
     )
     Column(
         modifier = modifier
-            .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.92f, sound = CalSnapSoundEffect.TabSwitch, onClick = onClick)
             .padding(horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(width = pillWidth, height = 34.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(bg),
+                .size(width = 48.dp, height = 34.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -160,7 +179,7 @@ private fun CalSnapNavItem(
             modifier = Modifier
                 .size(4.dp)
                 .clip(CircleShape)
-                .background(if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent),
+                .background(if (selected) MaterialTheme.colorScheme.secondary else Color.Transparent),
         )
     }
 }
@@ -186,7 +205,7 @@ private fun CalSnapAddNavItem(
     val iconColor = if (dark) CalSnapInk else Color(0xFFF2F0EB)
     Column(
         modifier = modifier
-            .calSnapClickable(pressedScale = 0.80f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.80f, sound = CalSnapSoundEffect.AddFood, haptic = CalSnapHapticEffect.Medium, onClick = onClick)
             .padding(horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

@@ -8,8 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -23,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,8 +34,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -71,6 +77,7 @@ import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
@@ -204,38 +211,58 @@ private fun Header(onDismiss: () -> Unit) {
 
 @Composable
 private fun AddTabs(selected: AddFoodViewModel.Tab, onSelect: (AddFoodViewModel.Tab) -> Unit) {
-    Row(
+    val tabs = AddFoodViewModel.Tab.entries
+    val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
             .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        AddFoodViewModel.Tab.entries.forEach { tab ->
-            val isSelected = selected == tab
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isSelected) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent)
-                    .calSnapClickable(pressedScale = 0.93f, onClick = { onSelect(tab) }),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = when (tab) {
-                    AddFoodViewModel.Tab.PHOTO -> stringResource(R.string.add_tab_photo)
-                    AddFoodViewModel.Tab.TEXT -> stringResource(R.string.add_tab_text)
-                    AddFoodViewModel.Tab.BARCODE -> stringResource(R.string.add_tab_barcode)
-                    AddFoodViewModel.Tab.FAVOURITES -> stringResource(R.string.add_tab_favourites)
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+        val gap = 3.dp
+        val segmentWidth = (maxWidth - gap * (tabs.size - 1).toFloat()) / tabs.size.toFloat()
+        val pillX by animateDpAsState(
+            targetValue = (segmentWidth + gap) * selectedIndex.toFloat(),
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+            label = "addTabsPillX",
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = pillX)
+                .width(segmentWidth)
+                .height(38.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = selected == tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .calSnapClickable(pressedScale = 0.93f, sound = CalSnapSoundEffect.TabSwitch, onClick = { onSelect(tab) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = when (tab) {
+                        AddFoodViewModel.Tab.PHOTO -> stringResource(R.string.add_tab_photo)
+                        AddFoodViewModel.Tab.TEXT -> stringResource(R.string.add_tab_text)
+                        AddFoodViewModel.Tab.BARCODE -> stringResource(R.string.add_tab_barcode)
+                        AddFoodViewModel.Tab.FAVOURITES -> stringResource(R.string.add_tab_favourites)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
