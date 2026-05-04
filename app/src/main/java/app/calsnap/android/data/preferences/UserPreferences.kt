@@ -112,10 +112,10 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         data.map { it[Keys.LANGUAGE] }
 
     val soundOn: Flow<Boolean> =
-        data.map { it[Keys.SOUND_ON] ?: true }
+        data.map { it[Keys.SOUND_ON] ?: false }
 
     val hapticOn: Flow<Boolean> =
-        data.map { it[Keys.HAPTIC_ON] ?: true }
+        data.map { it[Keys.HAPTIC_ON] ?: false }
 
     val geminiModel: Flow<String> =
         data.map { it[Keys.GEMINI_MODEL] ?: "gemini-flash-lite-latest" }

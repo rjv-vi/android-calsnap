@@ -272,13 +272,13 @@
     <string name="progress_weight_input">New weight</string>
     <string name="progress_save">Save</string>
 
-    <string name="ai_title">AI Nutritionist</string>
-    <string name="ai_subtitle">Uses your diary, water and goal</string>
+    <string name="ai_title">CalSnap AI</string>
+    <string name="ai_subtitle">Uses your diary and goal</string>
     <string name="ai_online">Online</string>
     <string name="ai_input_hint">Ask anything…</string>
     <string name="ai_send">Send</string>
     <string name="ai_you">You</string>
-    <string name="ai_typing">CalSnap is thinking…</string>
+    <string name="ai_typing">CalSnap AI is thinking…</string>
     <string name="ai_prompt_improve">What to improve?</string>
     <string name="ai_prompt_water">How much water?</string>
     <string name="ai_prompt_dinner">Dinner idea</string>

@@ -57,8 +57,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val darkOverride by prefs.darkTheme.collectAsState(initial = null)
             val language by prefs.storedLanguage.collectAsState(initial = null)
-            val soundOn by prefs.soundOn.collectAsState(initial = true)
-            val hapticOn by prefs.hapticOn.collectAsState(initial = true)
+            val soundOn by prefs.soundOn.collectAsState(initial = false)
+            val hapticOn by prefs.hapticOn.collectAsState(initial = false)
             val systemDark = isSystemInDarkTheme()
             LaunchedEffect(language) {
                 language?.let(::applyLanguage)

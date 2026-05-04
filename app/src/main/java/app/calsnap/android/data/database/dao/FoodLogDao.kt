@@ -17,7 +17,7 @@ interface FoodLogDao {
         """
         SELECT * FROM food_log
         WHERE loggedAt BETWEEN :startOfDayMs AND :endOfDayMs
-        ORDER BY loggedAt ASC
+        ORDER BY loggedAt DESC
         """
     )
     fun observeDay(startOfDayMs: Long, endOfDayMs: Long): Flow<List<FoodLogEntity>>

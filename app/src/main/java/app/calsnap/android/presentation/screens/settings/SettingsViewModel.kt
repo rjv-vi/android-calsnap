@@ -33,8 +33,8 @@ class SettingsViewModel @Inject constructor(
     data class UiState(
         val darkTheme: Boolean? = null,
         val language: String = "ru",
-        val soundOn: Boolean = true,
-        val hapticOn: Boolean = true,
+        val soundOn: Boolean = false,
+        val hapticOn: Boolean = false,
         val profile: UserProfile? = null,
         val hasGeminiKey: Boolean = false,
         val selectedModel: String = "gemini-flash-lite-latest",

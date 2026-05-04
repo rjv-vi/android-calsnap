@@ -129,7 +129,7 @@ private class AndroidCalSnapSoundPlayer(context: Context) : CalSnapSoundPlayer {
         )
         .build()
     private val soundIds = CalSnapSoundEffect.entries.associateWith { pool.load(appContext, it.resId, 1) }
-    private var enabled = true
+    private var enabled = false
 
     override fun setEnabled(enabled: Boolean) {
         this.enabled = enabled
@@ -150,7 +150,7 @@ private class AndroidCalSnapHapticPlayer(context: Context) : CalSnapHapticPlayer
     private val vibrator: Vibrator? = context
         .getSystemService(VibratorManager::class.java)
         ?.defaultVibrator
-    private var enabled = true
+    private var enabled = false
 
     override fun setEnabled(enabled: Boolean) {
         this.enabled = enabled
@@ -160,21 +160,25 @@ private class AndroidCalSnapHapticPlayer(context: Context) : CalSnapHapticPlayer
         if (!enabled) return
         val vibrator = vibrator?.takeIf { it.hasVibrator() } ?: return
         when (effect) {
-            CalSnapHapticEffect.Light -> vibrator.vibrateOnce(8)
-            CalSnapHapticEffect.Medium -> vibrator.vibrateOnce(16)
-            CalSnapHapticEffect.Heavy -> vibrator.vibrateOnce(30)
-            CalSnapHapticEffect.Success -> vibrator.vibratePattern(longArrayOf(0, 12, 40, 18))
-            CalSnapHapticEffect.Error -> vibrator.vibratePattern(longArrayOf(0, 20, 60, 20, 60, 20))
-            CalSnapHapticEffect.Tick -> vibrator.vibrateOnce(4)
-            CalSnapHapticEffect.Double -> vibrator.vibratePattern(longArrayOf(0, 10, 50, 10))
+            CalSnapHapticEffect.Light -> vibrator.vibratePredefined(VibrationEffect.EFFECT_CLICK)
+            CalSnapHapticEffect.Medium -> vibrator.vibrateOnce(24, 140)
+            CalSnapHapticEffect.Heavy -> vibrator.vibratePredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+            CalSnapHapticEffect.Success -> vibrator.vibratePattern(longArrayOf(0, 18, 44, 28), intArrayOf(0, 120, 0, 190))
+            CalSnapHapticEffect.Error -> vibrator.vibratePattern(longArrayOf(0, 26, 56, 26, 56, 34), intArrayOf(0, 210, 0, 210, 0, 230))
+            CalSnapHapticEffect.Tick -> vibrator.vibratePredefined(VibrationEffect.EFFECT_TICK)
+            CalSnapHapticEffect.Double -> vibrator.vibratePredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
         }
     }
 
-    private fun Vibrator.vibrateOnce(durationMs: Long) {
-        vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+    private fun Vibrator.vibratePredefined(effectId: Int) {
+        vibrate(VibrationEffect.createPredefined(effectId))
     }
 
-    private fun Vibrator.vibratePattern(pattern: LongArray) {
-        vibrate(VibrationEffect.createWaveform(pattern, -1))
+    private fun Vibrator.vibrateOnce(durationMs: Long, amplitude: Int) {
+        vibrate(VibrationEffect.createOneShot(durationMs, amplitude.coerceIn(1, 255)))
+    }
+
+    private fun Vibrator.vibratePattern(pattern: LongArray, amplitudes: IntArray) {
+        vibrate(VibrationEffect.createWaveform(pattern, amplitudes, -1))
     }
 }

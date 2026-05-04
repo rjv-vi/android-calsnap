@@ -281,13 +281,13 @@
     <string name="progress_weight_input">Новый вес</string>
     <string name="progress_save">Сохранить</string>
 
-    <string name="ai_title">AI Нутрициолог</string>
-    <string name="ai_subtitle">Учитывает дневник, воду и твою цель</string>
+    <string name="ai_title">CalSnap AI</string>
+    <string name="ai_subtitle">Учитывает дневник и твою цель</string>
     <string name="ai_online">Онлайн</string>
     <string name="ai_input_hint">Спроси что-нибудь…</string>
     <string name="ai_send">Отправить</string>
     <string name="ai_you">Ты</string>
-    <string name="ai_typing">CalSnap думает…</string>
+    <string name="ai_typing">CalSnap AI думает…</string>
     <string name="ai_prompt_improve">Что улучшить?</string>
     <string name="ai_prompt_water">Сколько воды?</string>
     <string name="ai_prompt_dinner">Идея ужина</string>

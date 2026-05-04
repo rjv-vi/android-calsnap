@@ -36,7 +36,7 @@ class AiChatViewModel @Inject constructor(
     private val _ui = MutableStateFlow(
         UiState(
             hasApiKey = safeHasGeminiKey(),
-            messages = listOf(ChatMessage("Привет! Я помогу разобрать питание и цели на сегодня.", false)),
+            messages = listOf(ChatMessage("Привет! Я CalSnap AI — помогу разобрать питание и цели на сегодня.", false)),
         ),
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
