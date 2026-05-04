@@ -1,6 +1,7 @@
 package app.calsnap.android.presentation.screens.add
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,6 +23,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +60,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +83,7 @@ import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.LocalCalSnapEffects
@@ -281,65 +288,36 @@ private fun AddTabs(selected: AddFoodViewModel.Tab, onSelect: (AddFoodViewModel.
 
 @Composable
 private fun BarcodeTab(viewModel: AddFoodViewModel, loading: Boolean) {
-    var code by remember { mutableStateOf("") }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        TabIntro("🏷️", stringResource(R.string.add_barcode_title), stringResource(R.string.add_barcode_subtitle))
-        CalSnapTextField(
-            value = code,
-            onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(18) },
-            label = stringResource(R.string.add_barcode_hint),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        CalSnapPrimaryButton(
-            onClick = { viewModel.lookupBarcode(code) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = code.length >= 8 && !loading,
-        ) {
-            Text(stringResource(R.string.add_lookup_barcode))
-        }
-    }
-}
-
-@Composable
-private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
     val context = LocalContext.current
     val effects = LocalCalSnapEffects.current
-    var hint by remember { mutableStateOf("") }
-    var selectedName by remember { mutableStateOf<String?>(null) }
+    var code by remember { mutableStateOf("") }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
-    fun analyzeUri(uri: Uri, label: String? = null) {
+    var selectedName by remember { mutableStateOf<String?>(null) }
+    fun analyzeBarcodeUri(uri: Uri, label: String? = null) {
         selectedName = label ?: uri.lastPathSegment
         runCatching {
             decodePhotoBitmap(context, uri)
         }.onSuccess { bitmap ->
-            viewModel.analyzePhoto(bitmap, hint)
+            viewModel.analyzeBarcodePhoto(bitmap)
         }.onFailure { error ->
             viewModel.setError(error.message)
         }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        analyzeUri(uri)
+        analyzeBarcodeUri(uri)
     }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
         val uri = cameraUri
-        if (saved && uri != null) {
-            analyzeUri(uri, context.getString(R.string.add_photo_camera_selected))
-        }
+        if (saved && uri != null) analyzeBarcodeUri(uri, context.getString(R.string.add_photo_camera_selected))
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        TabIntro("📸", stringResource(R.string.add_photo_title), stringResource(R.string.add_photo_subtitle))
-        CalSnapTextField(
-            value = hint,
-            onValueChange = { hint = it },
-            label = stringResource(R.string.add_photo_hint),
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-        )
-        CalSnapPrimaryButton(
-            onClick = {
-                effects.sound.play(CalSnapSoundEffect.PhotoSnap)
+        ScanBox(
+            title = stringResource(R.string.add_barcode_title),
+            subtitle = stringResource(R.string.add_barcode_subtitle),
+            loading = loading,
+            onCamera = {
+                effects.sound.play(CalSnapSoundEffect.BarcodeScan)
                 runCatching {
                     createCameraImageUri(context).also { uri ->
                         cameraUri = uri
@@ -349,22 +327,35 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
                     viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !loading,
-        ) {
-            Text(stringResource(R.string.add_take_photo))
-        }
-        Text(
-            text = stringResource(R.string.add_pick_photo),
-            modifier = Modifier
-                .fillMaxWidth()
-                .calSnapClickable(enabled = !loading, pressedScale = 0.98f, sound = CalSnapSoundEffect.Select) { picker.launch("image/*") }
-                .padding(vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (loading) 0.38f else 1f),
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            onGallery = {
+                effects.sound.play(CalSnapSoundEffect.BarcodeScan)
+                picker.launch("image/*")
+            },
         )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CalSnapTextField(
+                value = code,
+                onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(18) },
+                label = stringResource(R.string.add_barcode_hint),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.onSurface)
+                    .calSnapClickable(
+                        enabled = code.length >= 8 && !loading,
+                        pressedScale = 0.90f,
+                        sound = CalSnapSoundEffect.BarcodeScan,
+                        onClick = { viewModel.lookupBarcode(code) },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("→", color = MaterialTheme.colorScheme.background, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            }
+        }
         selectedName?.let {
             Text(
                 it,
@@ -376,6 +367,248 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
         }
     }
 }
+
+@Composable
+private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
+    val context = LocalContext.current
+    val effects = LocalCalSnapEffects.current
+    var hint by remember { mutableStateOf("") }
+    var selectedName by remember { mutableStateOf<String?>(null) }
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    fun loadUri(uri: Uri, label: String? = null) {
+        selectedName = label ?: uri.lastPathSegment
+        runCatching {
+            decodePhotoBitmap(context, uri)
+        }.onSuccess { bitmap ->
+            previewBitmap = bitmap
+        }.onFailure { error ->
+            viewModel.setError(error.message)
+        }
+    }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        loadUri(uri)
+    }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val uri = cameraUri
+        if (saved && uri != null) {
+            loadUri(uri, context.getString(R.string.add_photo_camera_selected))
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        val preview = previewBitmap
+        if (preview == null) {
+            UploadZone(
+                icon = "📷",
+                title = stringResource(R.string.add_photo_title),
+                subtitle = stringResource(R.string.add_photo_subtitle),
+                loading = loading,
+                onCamera = {
+                    effects.sound.play(CalSnapSoundEffect.PhotoSnap)
+                    runCatching {
+                        createCameraImageUri(context).also { uri ->
+                            cameraUri = uri
+                            camera.launch(uri)
+                        }
+                    }.onFailure { error ->
+                        viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
+                    }
+                },
+                onGallery = {
+                    effects.sound.play(CalSnapSoundEffect.Select)
+                    picker.launch("image/*")
+                },
+            )
+        } else {
+            PhotoPreview(
+                bitmap = preview,
+                onChange = {
+                    previewBitmap = null
+                    selectedName = null
+                },
+            )
+            CalSnapTextField(
+                value = hint,
+                onValueChange = { hint = it },
+                label = stringResource(R.string.add_photo_hint),
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+            )
+            CalSnapPrimaryButton(
+                onClick = { viewModel.analyzePhoto(preview, hint) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !loading,
+            ) {
+                Text("🔍 ${stringResource(R.string.add_analyze_photo)}")
+            }
+        }
+        selectedName?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UploadZone(
+    icon: String,
+    title: String,
+    subtitle: String,
+    loading: Boolean,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(addSurface2Color())
+            .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(22.dp))
+            .padding(horizontal = 20.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(icon, style = MaterialTheme.typography.displaySmall)
+        Text(
+            title,
+            modifier = Modifier.padding(top = 10.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            subtitle,
+            modifier = Modifier.padding(top = 4.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CalSnapPrimaryButton(onClick = onCamera, modifier = Modifier.weight(1f), enabled = !loading, height = 48.dp) {
+                Text("📷 ${stringResource(R.string.add_take_photo)}")
+            }
+            CalSnapSecondaryButton(onClick = onGallery, modifier = Modifier.weight(1f), enabled = !loading, height = 48.dp) {
+                Text("🖼 ${stringResource(R.string.add_pick_photo)}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoPreview(bitmap: Bitmap, onChange: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(addSurface2Color()),
+    ) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(10.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
+                .calSnapClickable(pressedScale = 0.94f, sound = CalSnapSoundEffect.ButtonTap, onClick = onChange)
+                .padding(horizontal = 13.dp, vertical = 8.dp),
+        ) {
+            Text(stringResource(R.string.add_change_photo), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ScanBox(
+    title: String,
+    subtitle: String,
+    loading: Boolean,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(addSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(22.dp))
+            .padding(horizontal = 20.dp, vertical = 30.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .border(BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface), RoundedCornerShape(14.dp)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .align(Alignment.TopCenter)
+                    .background(MaterialTheme.colorScheme.onSurface),
+            )
+        }
+        Text(
+            title,
+            modifier = Modifier.padding(top = 16.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            subtitle,
+            modifier = Modifier.padding(top = 4.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CalSnapPrimaryButton(onClick = onCamera, modifier = Modifier.weight(1f), enabled = !loading, height = 48.dp) {
+                Text("📷 ${stringResource(R.string.add_take_photo)}")
+            }
+            CalSnapSecondaryButton(onClick = onGallery, modifier = Modifier.weight(1f), enabled = !loading, height = 48.dp) {
+                Text("🖼 ${stringResource(R.string.add_pick_photo)}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun addSurface2Color(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.25f) Color(0xFF231F1B) else Color(0xFFF7F5F1)
+
+@Composable
+private fun addMacroProteinColor(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.25f) Color(0xFFF07055) else Color(0xFFB84530)
+
+@Composable
+private fun addMacroCarbsColor(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.25f) Color(0xFFF0A840) else Color(0xFF8B6020)
+
+@Composable
+private fun addMacroFatColor(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.25f) Color(0xFF5B9CF6) else Color(0xFF1A50AE)
 
 @Composable
 private fun TextTab(viewModel: AddFoodViewModel, loading: Boolean) {
@@ -599,9 +832,9 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
         }
         Spacer(Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NeutralMacroPill("Б", protein, Modifier.weight(1f))
-            NeutralMacroPill("У", carbs, Modifier.weight(1f))
-            NeutralMacroPill("Ж", fat, Modifier.weight(1f))
+            NeutralMacroPill(stringResource(R.string.macro_p_short), protein, addMacroProteinColor(), Modifier.weight(1f))
+            NeutralMacroPill(stringResource(R.string.macro_c_short), carbs, addMacroCarbsColor(), Modifier.weight(1f))
+            NeutralMacroPill(stringResource(R.string.macro_f_short), fat, addMacroFatColor(), Modifier.weight(1f))
         }
         Spacer(Modifier.height(14.dp))
         CalSnapPrimaryButton(onClick = { onAdd(multiplier) }, modifier = Modifier.fillMaxWidth()) {
@@ -658,14 +891,18 @@ private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick:
 }
 
 @Composable
-private fun NeutralMacroPill(label: String, value: Float, modifier: Modifier = Modifier) {
+private fun NeutralMacroPill(label: String, value: Float, color: Color, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .padding(vertical = 6.dp),
+            .clip(RoundedCornerShape(14.dp))
+            .background(addSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = color)
     }
 }
 
@@ -764,9 +1001,9 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
         Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MacroPill("Б", result.protein, Modifier.weight(1f))
-            MacroPill("У", result.carbs, Modifier.weight(1f))
-            MacroPill("Ж", result.fat, Modifier.weight(1f))
+            MacroPill(stringResource(R.string.macro_p_short), result.protein, addMacroProteinColor(), Modifier.weight(1f))
+            MacroPill(stringResource(R.string.macro_c_short), result.carbs, addMacroCarbsColor(), Modifier.weight(1f))
+            MacroPill(stringResource(R.string.macro_f_short), result.fat, addMacroFatColor(), Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
         CalSnapPrimaryButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
@@ -776,14 +1013,18 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun MacroPill(label: String, value: Float, modifier: Modifier = Modifier) {
+private fun MacroPill(label: String, value: Float, color: Color, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .padding(vertical = 8.dp),
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = color)
     }
 }
 

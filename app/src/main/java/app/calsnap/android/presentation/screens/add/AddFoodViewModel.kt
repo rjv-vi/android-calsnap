@@ -118,6 +118,19 @@ class AddFoodViewModel @Inject constructor(
         }
     }
 
+    fun analyzeBarcodePhoto(bitmap: Bitmap) {
+        _ui.update { it.copy(loading = true, error = null) }
+        viewModelScope.launch {
+            runCatching {
+                gemini.analyzeBarcodePhoto(bitmap)
+            }.onSuccess { r ->
+                _ui.update { it.copy(loading = false, result = r, resultSource = FoodLogEntity.Source.BARCODE) }
+            }.onFailure { t ->
+                _ui.update { it.copy(loading = false, error = t.message) }
+            }
+        }
+    }
+
     fun setError(message: String?) = _ui.update { it.copy(error = message) }
 
     fun confirmAndLog(result: FoodAnalysisResult, source: FoodLogEntity.Source, saveFavourite: Boolean = false) {

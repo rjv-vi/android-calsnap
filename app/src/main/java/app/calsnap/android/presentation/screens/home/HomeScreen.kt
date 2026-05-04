@@ -514,6 +514,9 @@ private fun FoodDetailSheet(
 private fun DetailMacroTile(label: String, value: Float, color: Color, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(homeSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(16.dp))
             .padding(horizontal = 10.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -1241,6 +1244,9 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
     )
     Column(
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(homeSurface2Color())
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(16.dp))
             .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 9.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {

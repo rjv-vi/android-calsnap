@@ -139,6 +139,25 @@ class GeminiClient @Inject constructor(
         throw lastError ?: IllegalStateException("Gemini photo: all models failed")
     }
 
+    suspend fun analyzeBarcodePhoto(
+        bitmap: Bitmap,
+        modelName: String? = null,
+    ): FoodAnalysisResult {
+        var lastError: Throwable? = null
+        val imagePart = imagePart(bitmap)
+        for (model in modelChain(modelName)) {
+            runCatching {
+                val raw = requestGenerateContent(
+                    modelName = model,
+                    parts = listOf(textPart(buildBarcodePhotoPrompt()), imagePart),
+                    preferJson = true,
+                )
+                return json.decodeFromString(FoodAnalysisResult.serializer(), sanitizeJson(raw))
+            }.onFailure { lastError = it }
+        }
+        throw lastError ?: IllegalStateException("Gemini barcode photo: all models failed")
+    }
+
     private suspend fun modelChain(modelName: String?): List<String> {
         val selected = modelName ?: preferences.geminiModel.first()
         return (listOf(selected) + defaultFallbackChain)
@@ -256,6 +275,12 @@ class GeminiClient @Inject constructor(
             append(" Подсказка пользователя: «$userHint».")
         }
     }
+
+    private fun buildBarcodePhotoPrompt(): String =
+        "Ты — русскоязычный нутрициолог. На фото штрихкод или упаковка продукта. " +
+            "Определи продукт и пищевую ценность на порцию или 100г. Верни СТРОГИЙ JSON по схеме: " +
+            "{food: string, portion: string, calories: int, protein: float, fat: float, carbs: float, description: string, ingredients: [string]}. " +
+            "Если виден только штрихкод, используй его как подсказку и оцени наиболее вероятный продукт."
 
     private companion object {
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
