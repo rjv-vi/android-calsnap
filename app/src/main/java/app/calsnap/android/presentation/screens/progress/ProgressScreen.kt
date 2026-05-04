@@ -525,12 +525,9 @@ private fun WaterWave(progress: Float) {
 private fun DrinkButton(spec: DrinkButtonSpec, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .height(82.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), RoundedCornerShape(14.dp))
+            .height(78.dp)
             .calSnapClickable(pressedScale = 0.82f, onClick = onClick)
-            .padding(horizontal = 5.dp, vertical = 9.dp),
+            .padding(horizontal = 5.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -550,9 +547,14 @@ private fun WaterTimeline(events: List<ProgressViewModel.WaterEvent>, onUndo: ()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.13f)), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
             .padding(horizontal = 18.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(0.5.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -605,9 +607,6 @@ private fun WaterEventChip(event: ProgressViewModel.WaterEvent) {
     Column(
         modifier = Modifier
             .widthIn(min = 58.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MacroWater.copy(alpha = 0.07f))
-            .border(BorderStroke(0.5.dp, MacroWater.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -764,10 +763,7 @@ private fun PaceCard(delta: Float) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

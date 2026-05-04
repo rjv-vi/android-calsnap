@@ -220,7 +220,7 @@ private fun ModelRow(model: GeminiClient.GeminiModelInfo, selected: Boolean, onS
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f))
+            .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
             .calSnapClickable(pressedScale = 0.97f, onClick = onSelect)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,

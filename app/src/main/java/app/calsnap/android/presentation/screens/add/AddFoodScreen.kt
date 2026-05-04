@@ -347,9 +347,7 @@ private fun FavouritesTab(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f))
-                    .padding(18.dp),
+                    .padding(horizontal = 8.dp, vertical = 28.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -383,23 +381,18 @@ private fun FavouritesTab(
 
 @Composable
 private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> Unit, onRemove: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(if (selected) 1.dp else 0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.42f else 0.14f)), shape)
             .calSnapClickable(pressedScale = 0.98f, onClick = onAdd)
-            .padding(12.dp),
+            .padding(horizontal = 2.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f)),
+                .clip(RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(foodEmoji(entry.foodName), style = MaterialTheme.typography.titleMedium)
@@ -418,26 +411,20 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
             "✕",
             modifier = Modifier
                 .calSnapClickable(pressedScale = 0.85f, onClick = onRemove)
-                .padding(6.dp),
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Black,
         )
-        Box(
+        Text(
+            if (selected) stringResource(R.string.add_favourite_selected) else stringResource(R.string.add_favourite_choose_portion),
             modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.onSurface)
                 .calSnapClickable(pressedScale = 0.94f, onClick = onAdd)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                if (selected) stringResource(R.string.add_favourite_selected) else stringResource(R.string.add_favourite_choose_portion),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.background,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+                .padding(horizontal = 2.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Black,
+        )
     }
 }
 
@@ -454,18 +441,19 @@ private fun FavouritePortionPanel(entry: FoodLogEntity, onAdd: (Float) -> Unit) 
         PortionOption(1.5f, "1.5×", stringResource(R.string.add_favourite_choice_more)),
         PortionOption(2f, "2×", stringResource(R.string.add_favourite_choice_double)),
     )
-    CalSnapCard(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(28.dp),
-        padding = PaddingValues(16.dp),
-        containerBrush = Brush.verticalGradient(
-            listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface),
-        ),
-        borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f),
-        elevation = 0.dp,
+            .animateContentSize()
+            .padding(start = 4.dp, end = 4.dp, bottom = 12.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(0.5.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+        )
+        Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             NeutralIconTile(icon = foodEmoji(entry.foodName), size = 52.dp)
             Column(Modifier.weight(1f)) {
@@ -574,8 +562,7 @@ private fun NeutralIconTile(icon: String, size: androidx.compose.ui.unit.Dp = 52
         modifier = Modifier
             .size(size)
             .clip(RoundedCornerShape(size / 3f))
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)), RoundedCornerShape(size / 3f)),
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f)),
         contentAlignment = Alignment.Center,
     ) {
         Text(icon, style = MaterialTheme.typography.headlineSmall)
@@ -586,7 +573,7 @@ private data class PortionOption(val multiplier: Float, val label: String, val c
 
 @Composable
 private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val bg = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface
+    val bg = if (selected) MaterialTheme.colorScheme.onSurface else androidx.compose.ui.graphics.Color.Transparent
     val fg = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
     val sub = if (selected) MaterialTheme.colorScheme.background.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
     Column(
@@ -594,7 +581,7 @@ private fun PortionOptionChip(option: PortionOption, selected: Boolean, onClick:
             .height(58.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(bg)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.0f else 0.12f)), RoundedCornerShape(16.dp))
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.0f else 0.16f)), RoundedCornerShape(16.dp))
             .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -623,8 +610,7 @@ private fun PortionStepButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .size(34.dp)
             .clip(RoundedCornerShape(17.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(17.dp))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
             .calSnapClickable(pressedScale = 0.78f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

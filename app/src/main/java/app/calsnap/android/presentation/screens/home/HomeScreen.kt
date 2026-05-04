@@ -465,10 +465,7 @@ private fun FoodDetailSheet(
 private fun DetailMacroTile(label: String, value: Float, color: Color, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(homeSurface2Color())
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(16.dp))
-            .padding(horizontal = 10.dp, vertical = 14.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -563,10 +560,7 @@ private fun ServingControl(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(homeSurface2Color())
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(18.dp))
-            .padding(horizontal = 18.dp, vertical = 13.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -1198,11 +1192,7 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
     )
     Column(
         modifier = modifier
-            .shadow(8.dp, RoundedCornerShape(18.dp), clip = false)
-            .clip(RoundedCornerShape(18.dp))
-            .background(homeSurface2Color())
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(18.dp))
-            .padding(start = 12.dp, end = 12.dp, top = 13.dp, bottom = 11.dp),
+            .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 9.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Text(
@@ -1243,10 +1233,8 @@ private fun WaterStrip(waterMl: Int, goalMl: Int) {
         modifier = Modifier
             .padding(top = 12.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(water.copy(alpha = 0.07f))
             .calSnapClickable(pressedScale = 0.98f, onClick = {})
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -1501,12 +1489,7 @@ private fun FoodRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .shadow(4.dp, RoundedCornerShape(13.dp), clip = false)
-                .clip(RoundedCornerShape(13.dp))
-                .background(homeSurface2Color())
-                .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = homeB1Alpha())), RoundedCornerShape(13.dp)),
+            modifier = Modifier.size(44.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(foodEmoji(entry.foodName), style = TextStyle(fontSize = 24.sp))
