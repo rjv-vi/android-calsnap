@@ -70,14 +70,14 @@
     <string name="add_tab_barcode">Barcode</string>
     <string name="add_tab_favourites">Favourites</string>
     <string name="add_photo_title">Analyze a food photo</string>
-    <string name="add_photo_subtitle">Pick a food photo. If you know weight or ingredients, add a hint.</string>
+    <string name="add_photo_subtitle">Take or pick a food photo. If you know weight or ingredients, add a hint.</string>
     <string name="add_text_title">Describe food with text</string>
     <string name="add_text_subtitle">Works better with rough weight, sauce and portion size.</string>
     <string name="add_barcode_title">Find product by barcode</string>
     <string name="add_barcode_subtitle">Manual input for now; camera scanning is next.</string>
     <string name="add_favourites_title">Quick from favourites</string>
     <string name="add_favourites_subtitle">Pick a saved portion and resize it without scales or grams.</string>
-    <string name="add_favourites_empty">No favourite foods yet. Save an AI result as a favourite.</string>
+    <string name="add_favourites_empty">No favourite foods yet. Add a food to the diary and tap the star.</string>
     <string name="add_favourite_choose_portion">Choose</string>
     <string name="add_favourite_selected">Selected</string>
     <string name="add_favourite_portion_title">Portion size</string>
@@ -95,7 +95,10 @@
     <string name="add_save_favourite">Add and save favourite</string>
     <string name="add_analyzing">Analyzing…</string>
     <string name="add_photo_hint">Photo hint: weight, sauce, portion size</string>
+    <string name="add_take_photo">Take photo and analyze</string>
     <string name="add_pick_photo">Pick photo and analyze</string>
+    <string name="add_photo_camera_selected">Camera photo</string>
+    <string name="add_camera_failed">Could not open camera</string>
     <string name="add_barcode_hint">Barcode from package</string>
     <string name="add_lookup_barcode">Find in OpenFoodFacts</string>
     <string name="add_photo_stub">Photo AI lands in v1.1 — use the “Text” tab for now</string>

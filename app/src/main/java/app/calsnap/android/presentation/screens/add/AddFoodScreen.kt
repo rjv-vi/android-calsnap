@@ -1,6 +1,8 @@
 package app.calsnap.android.presentation.screens.add
 
+import android.content.Context
 import android.graphics.ImageDecoder
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -57,6 +59,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
@@ -68,13 +71,10 @@ import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
-import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
-import app.calsnap.android.ui.theme.MacroCarbs
-import app.calsnap.android.ui.theme.MacroFat
-import app.calsnap.android.ui.theme.MacroProtein
+import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -169,10 +169,6 @@ private fun AddFoodContent(
                     result = result,
                     onConfirm = {
                         viewModel.confirmAndLog(result, ui.resultSource)
-                        onDismiss()
-                    },
-                    onConfirmFavourite = {
-                        viewModel.confirmAndLog(result, ui.resultSource, saveFavourite = true)
                         onDismiss()
                     },
                 )
@@ -272,16 +268,25 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
     val context = LocalContext.current
     var hint by remember { mutableStateOf("") }
     var selectedName by remember { mutableStateOf<String?>(null) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        selectedName = uri.lastPathSegment
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    fun analyzeUri(uri: Uri, label: String? = null) {
+        selectedName = label ?: uri.lastPathSegment
         runCatching {
-            val source = ImageDecoder.createSource(context.contentResolver, uri)
-            ImageDecoder.decodeBitmap(source) { decoder, _, _ -> decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE }
+            decodePhotoBitmap(context, uri)
         }.onSuccess { bitmap ->
             viewModel.analyzePhoto(bitmap, hint)
         }.onFailure { error ->
             viewModel.setError(error.message)
+        }
+    }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        analyzeUri(uri)
+    }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val uri = cameraUri
+        if (saved && uri != null) {
+            analyzeUri(uri, context.getString(R.string.add_photo_camera_selected))
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -294,12 +299,32 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
             minLines = 3,
         )
         CalSnapPrimaryButton(
-            onClick = { picker.launch("image/*") },
+            onClick = {
+                runCatching {
+                    createCameraImageUri(context).also { uri ->
+                        cameraUri = uri
+                        camera.launch(uri)
+                    }
+                }.onFailure { error ->
+                    viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading,
         ) {
-            Text(stringResource(R.string.add_pick_photo))
+            Text(stringResource(R.string.add_take_photo))
         }
+        Text(
+            text = stringResource(R.string.add_pick_photo),
+            modifier = Modifier
+                .fillMaxWidth()
+                .calSnapClickable(enabled = !loading, pressedScale = 0.98f) { picker.launch("image/*") }
+                .padding(vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (loading) 0.38f else 1f),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
         selectedName?.let {
             Text(
                 it,
@@ -674,19 +699,19 @@ private fun ErrorCard(message: String) {
 }
 
 @Composable
-private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConfirmFavourite: () -> Unit) {
+private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
     CalSnapCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
         padding = PaddingValues(18.dp),
-        containerBrush = Brush.verticalGradient(
-            listOf(CalSnapStreak.copy(alpha = 0.18f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
-        ),
-        borderColor = CalSnapStreak.copy(alpha = 0.24f),
+        containerBrush = Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)),
+        borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
         elevation = 18.dp,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CalSnapIconTile(icon = "✅", size = 54.dp, background = CalSnapStreak.copy(alpha = 0.12f))
+            Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+                Text("✅", style = MaterialTheme.typography.headlineSmall)
+            }
             Column(Modifier.weight(1f)) {
                 Text(result.food, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (result.portion.isNotBlank()) {
@@ -699,15 +724,11 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConf
         Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MacroPill("Б", result.protein, MacroProtein, Modifier.weight(1f))
-            MacroPill("У", result.carbs, MacroCarbs, Modifier.weight(1f))
-            MacroPill("Ж", result.fat, MacroFat, Modifier.weight(1f))
+            MacroPill("Б", result.protein, Modifier.weight(1f))
+            MacroPill("У", result.carbs, Modifier.weight(1f))
+            MacroPill("Ж", result.fat, Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
-        CalSnapSecondaryButton(onClick = onConfirmFavourite, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.add_save_favourite))
-        }
-        Spacer(Modifier.height(10.dp))
         CalSnapPrimaryButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.add_confirm_add))
         }
@@ -715,18 +736,27 @@ private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit, onConf
 }
 
 @Composable
-private fun MacroPill(label: String, value: Float, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+private fun MacroPill(label: String, value: Float, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.13f))
-            .padding(12.dp),
+            .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(label, color = color, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+        Text("${value.toInt()}${stringResource(R.string.unit_g)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
     }
 }
+
+private fun createCameraImageUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "calsnap-camera").apply { mkdirs() }
+    val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+private fun decodePhotoBitmap(context: Context, uri: Uri) =
+    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, _, _ ->
+        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+    }
 
 private fun formatMultiplier(value: Float): String =
     if (value % 1f == 0f) value.toInt().toString() else String.format(Locale.US, "%.1f", value)
