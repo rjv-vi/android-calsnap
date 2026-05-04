@@ -89,7 +89,7 @@ class DataExportRepository @Inject constructor(
                 item.fat.roundString(),
             )
         }
-        rows += emptyList()
+        rows.add(emptyList())
         rows += listOf("date", "time", "drink", "ml", "", "", "", "")
         waterDao.listAll().forEach { item ->
             rows += listOf(item.dateString(), item.timeString(), "Water", item.milliliters.toString(), "", "", "", "")
