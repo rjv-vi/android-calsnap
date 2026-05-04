@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -35,14 +36,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
+import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.remote.GeminiClient
+import app.calsnap.android.domain.BmrCalculator
 import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
+import app.calsnap.android.presentation.components.CalSnapHapticEffect
 import app.calsnap.android.presentation.components.CalSnapIconTile
-import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
@@ -90,6 +94,26 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     current = ui.language,
                     onChange = viewModel::setLanguage,
                 )
+                Spacer(Modifier.height(10.dp))
+                ToggleSettingRow(
+                    icon = "🔊",
+                    title = stringResource(R.string.settings_sounds),
+                    subtitle = stringResource(R.string.settings_sounds_sub),
+                    checked = ui.soundOn,
+                    onChange = viewModel::setSoundOn,
+                )
+                Spacer(Modifier.height(10.dp))
+                ToggleSettingRow(
+                    icon = "📳",
+                    title = stringResource(R.string.settings_haptics),
+                    subtitle = stringResource(R.string.settings_haptics_sub),
+                    checked = ui.hapticOn,
+                    onChange = viewModel::setHapticOn,
+                )
+            }
+            AnimatedSection(4) {
+                SectionLabel(stringResource(R.string.settings_section_profile))
+                ProfileCard(profile = ui.profile)
             }
             Text(
                 text = stringResource(R.string.settings_footer_v),
@@ -99,6 +123,43 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             )
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun ProfileCard(profile: UserProfile?) {
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(0.dp), elevation = 14.dp) {
+        SettingsValueRow(
+            icon = "Aa",
+            title = stringResource(R.string.settings_profile_name),
+            value = profile?.name?.takeIf { it.isNotBlank() } ?: "—",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "cm",
+            title = stringResource(R.string.settings_profile_params),
+            value = profile?.let { "${BmrCalculator.ageFromDob(it.dob)} · ${it.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${it.weightKg.toInt()} ${stringResource(R.string.unit_kg)}" } ?: "—",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🎯",
+            title = stringResource(R.string.settings_profile_goal),
+            value = profile?.goalLabel() ?: "—",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🔥",
+            title = stringResource(R.string.settings_profile_kcal),
+            subtitle = stringResource(R.string.settings_profile_kcal_sub),
+            value = profile?.let { "${it.kcalGoal} ${stringResource(R.string.unit_kcal)}" } ?: "—",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🥗",
+            title = stringResource(R.string.settings_profile_prefs),
+            subtitle = profile?.prefsSummary() ?: stringResource(R.string.settings_profile_no_prefs),
+            value = "›",
+        )
     }
 }
 
@@ -231,6 +292,112 @@ private fun ModelRow(model: GeminiClient.GeminiModelInfo, selected: Boolean, onS
             Text(model.name, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
             Text(model.id, color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun ToggleSettingRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), padding = PaddingValues(16.dp), elevation = 10.dp) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .calSnapClickable(
+                    pressedScale = 0.97f,
+                    sound = CalSnapSoundEffect.Toggle,
+                    haptic = CalSnapHapticEffect.Tick,
+                    onClick = { onChange(!checked) },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CalSnapIconTile(icon = icon, size = 46.dp, background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = checked, onCheckedChange = onChange)
+        }
+    }
+}
+
+@Composable
+private fun SettingsValueRow(
+    icon: String,
+    title: String,
+    value: String,
+    subtitle: String? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        CalSnapIconTile(
+            icon = icon,
+            size = 44.dp,
+            background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+            subtitle?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    Divider(
+        modifier = Modifier.padding(start = 72.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+        thickness = 0.5.dp,
+    )
+}
+
+@Composable
+private fun UserProfile.goalLabel(): String = when (goal) {
+    UserProfile.Goal.LOSE -> stringResource(R.string.onboarding_goal_lose)
+    UserProfile.Goal.MAINTAIN -> stringResource(R.string.onboarding_goal_maintain)
+    UserProfile.Goal.GAIN -> stringResource(R.string.onboarding_goal_gain)
+}
+
+@Composable
+private fun UserProfile.prefsSummary(): String {
+    val labels = preferences.mapNotNull { pref ->
+        when (pref) {
+            "no_meat" -> stringResource(R.string.pref_no_meat)
+            "no_gluten" -> stringResource(R.string.pref_no_gluten)
+            "no_lactose" -> stringResource(R.string.pref_no_lactose)
+            "no_sugar" -> stringResource(R.string.pref_no_sugar)
+            "vegan" -> stringResource(R.string.pref_vegan)
+            "keto" -> stringResource(R.string.pref_keto)
+            "halal" -> stringResource(R.string.pref_halal)
+            "no_eggs" -> stringResource(R.string.pref_no_eggs)
+            else -> null
+        }
+    }
+    return when {
+        labels.isNotEmpty() && allergies.isNotBlank() -> labels.joinToString(", ") + " · " + allergies
+        labels.isNotEmpty() -> labels.joinToString(", ")
+        allergies.isNotBlank() -> allergies
+        else -> stringResource(R.string.settings_profile_no_prefs)
     }
 }
 

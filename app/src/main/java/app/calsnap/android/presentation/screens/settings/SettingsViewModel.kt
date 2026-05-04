@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.remote.GeminiClient
+import app.calsnap.android.data.model.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,9 @@ class SettingsViewModel @Inject constructor(
     data class UiState(
         val darkTheme: Boolean? = null,
         val language: String = "ru",
+        val soundOn: Boolean = true,
+        val hapticOn: Boolean = true,
+        val profile: UserProfile? = null,
         val hasGeminiKey: Boolean = false,
         val selectedModel: String = "gemini-2.0-flash-lite",
         val models: List<GeminiClient.GeminiModelInfo> = emptyList(),
@@ -39,6 +43,15 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             prefs.language.collect { v -> _ui.update { it.copy(language = v) } }
+        }
+        viewModelScope.launch {
+            prefs.soundOn.collect { v -> _ui.update { it.copy(soundOn = v) } }
+        }
+        viewModelScope.launch {
+            prefs.hapticOn.collect { v -> _ui.update { it.copy(hapticOn = v) } }
+        }
+        viewModelScope.launch {
+            prefs.profile.collect { v -> _ui.update { it.copy(profile = v) } }
         }
         viewModelScope.launch {
             prefs.geminiModel.collect { v -> _ui.update { it.copy(selectedModel = v) } }
@@ -72,6 +85,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setDarkTheme(on: Boolean?) = viewModelScope.launch { prefs.setDarkTheme(on) }
     fun setLanguage(code: String)  = viewModelScope.launch { prefs.setLanguage(code) }
+    fun setSoundOn(on: Boolean) = viewModelScope.launch { prefs.setSoundOn(on) }
+    fun setHapticOn(on: Boolean) = viewModelScope.launch { prefs.setHapticOn(on) }
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 }
