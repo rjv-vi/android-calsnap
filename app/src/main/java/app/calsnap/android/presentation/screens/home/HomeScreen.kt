@@ -76,7 +76,9 @@ import app.calsnap.android.presentation.components.CalSnapPillTextField
 import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -97,6 +99,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val effects = LocalCalSnapEffects.current
     val goal = ui.profile?.kcalGoal ?: 2000
     var showApiSheet by remember { mutableStateOf(false) }
     var detailEntry by remember { mutableStateOf<FoodLogEntity?>(null) }
@@ -121,7 +124,14 @@ fun HomeScreen(
         ) {
             AnimatedSection(0) { HomeHeader(ui) }
             if (!ui.hasApiKey) {
-                AnimatedSection(1) { ApiMissingBar(onClick = { showApiSheet = true }) }
+                AnimatedSection(1) {
+                    ApiMissingBar(
+                        onClick = {
+                            effects.sound.play(CalSnapSoundEffect.SheetOpen)
+                            showApiSheet = true
+                        },
+                    )
+                }
             }
             AnimatedSection(2) { CalendarStrip(ui.calendarDays, ui.selectedDay, goal, viewModel::selectDay) }
             AnimatedSection(3) {
@@ -142,9 +152,18 @@ fun HomeScreen(
                 TodaySection(
                     ui = ui,
                     onAddFood = onAddFood,
-                    onOpenEntry = { detailEntry = it },
-                    onToggleFavourite = viewModel::toggleFavourite,
-                    onDelete = { deleteEntry = it },
+                    onOpenEntry = {
+                        effects.sound.play(CalSnapSoundEffect.CardTap)
+                        detailEntry = it
+                    },
+                    onToggleFavourite = {
+                        effects.sound.play(CalSnapSoundEffect.Select)
+                        viewModel.toggleFavourite(it)
+                    },
+                    onDelete = {
+                        effects.sound.play(CalSnapSoundEffect.Delete)
+                        deleteEntry = it
+                    },
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -153,7 +172,10 @@ fun HomeScreen(
 
     if (showApiSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showApiSheet = false },
+            onDismissRequest = {
+                effects.sound.play(CalSnapSoundEffect.SheetClose)
+                showApiSheet = false
+            },
             sheetState = apiSheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             scrimColor = Color.Black.copy(alpha = 0.45f),
@@ -162,17 +184,24 @@ fun HomeScreen(
         ) {
             ApiKeySheet(
                 onSave = { key ->
+                    effects.sound.play(CalSnapSoundEffect.Save)
                     viewModel.saveGeminiKey(key)
                     showApiSheet = false
                 },
-                onCancel = { showApiSheet = false },
+                onCancel = {
+                    effects.sound.play(CalSnapSoundEffect.SheetClose)
+                    showApiSheet = false
+                },
             )
         }
     }
 
     detailEntry?.let { entry ->
         ModalBottomSheet(
-            onDismissRequest = { detailEntry = null },
+            onDismissRequest = {
+                effects.sound.play(CalSnapSoundEffect.SheetClose)
+                detailEntry = null
+            },
             sheetState = detailSheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             scrimColor = Color.Black.copy(alpha = 0.50f),
@@ -181,9 +210,18 @@ fun HomeScreen(
         ) {
             FoodDetailSheet(
                 entry = entry,
-                onClose = { detailEntry = null },
-                onEdit = { editEntry = entry },
-                onDelete = { deleteEntry = entry },
+                onClose = {
+                    effects.sound.play(CalSnapSoundEffect.SheetClose)
+                    detailEntry = null
+                },
+                onEdit = {
+                    effects.sound.play(CalSnapSoundEffect.SheetOpen)
+                    editEntry = entry
+                },
+                onDelete = {
+                    effects.sound.play(CalSnapSoundEffect.Delete)
+                    deleteEntry = entry
+                },
                 onServingsChange = { viewModel.updateServings(entry, it) },
             )
         }
@@ -191,7 +229,10 @@ fun HomeScreen(
 
     editEntry?.let { entry ->
         ModalBottomSheet(
-            onDismissRequest = { editEntry = null },
+            onDismissRequest = {
+                effects.sound.play(CalSnapSoundEffect.SheetClose)
+                editEntry = null
+            },
             sheetState = editSheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             scrimColor = Color.Black.copy(alpha = 0.45f),
@@ -200,8 +241,12 @@ fun HomeScreen(
         ) {
             FoodEditSheet(
                 entry = entry,
-                onClose = { editEntry = null },
+                onClose = {
+                    effects.sound.play(CalSnapSoundEffect.SheetClose)
+                    editEntry = null
+                },
                 onSave = { name, portion, kcal, protein, carbs, fat, time, meal ->
+                    effects.sound.play(CalSnapSoundEffect.Save)
                     viewModel.updateEntryFromEdit(entry, name, portion, kcal, protein, carbs, fat, time, meal)
                     editEntry = null
                 },
@@ -213,12 +258,16 @@ fun HomeScreen(
         DeleteConfirmDialog(
             entry = entry,
             onConfirm = {
+                effects.sound.play(CalSnapSoundEffect.Delete)
                 viewModel.deleteEntry(entry)
                 deleteEntry = null
                 detailEntry = null
                 editEntry = null
             },
-            onCancel = { deleteEntry = null },
+            onCancel = {
+                effects.sound.play(CalSnapSoundEffect.Back)
+                deleteEntry = null
+            },
         )
     }
 }
@@ -233,7 +282,7 @@ private fun ApiMissingBar(onClick: () -> Unit) {
             .clip(RoundedCornerShape(20.dp))
             .background(warn.copy(alpha = 0.07f))
             .border(BorderStroke(1.5.dp, warn.copy(alpha = 0.18f)), RoundedCornerShape(20.dp))
-            .calSnapClickable(pressedScale = 0.98f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.98f, sound = null, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1483,7 +1532,7 @@ private fun FoodRow(
             .shadow(if (count == 1 || index == count - 1) 8.dp else 0.dp, shape, clip = false)
             .clip(shape)
             .background(homeSurfaceColor())
-            .calSnapClickable(pressedScale = 0.985f) { onOpenEntry(entry) }
+            .calSnapClickable(pressedScale = 0.985f, sound = null) { onOpenEntry(entry) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1549,7 +1598,7 @@ private fun FoodRow(
         Text(
             if (entry.favourite) "⭐" else "☆",
             modifier = Modifier
-                .calSnapClickable(pressedScale = 1.4f) { onToggleFavourite(entry) }
+                .calSnapClickable(pressedScale = 1.4f, sound = null) { onToggleFavourite(entry) }
                 .padding(horizontal = 4.dp, vertical = 4.dp),
             style = TextStyle(
                 fontSize = 16.sp,
@@ -1558,7 +1607,7 @@ private fun FoodRow(
         )
         Box(
             modifier = Modifier
-                .calSnapClickable(pressedScale = 0.75f) { onDelete(entry) }
+                .calSnapClickable(pressedScale = 0.75f, sound = null) { onDelete(entry) }
                 .padding(horizontal = 4.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center,
         ) {

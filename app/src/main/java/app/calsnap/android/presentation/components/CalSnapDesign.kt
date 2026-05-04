@@ -225,6 +225,8 @@ fun CalSnapPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     height: Dp = 54.dp,
+    sound: CalSnapSoundEffect? = CalSnapSoundEffect.ButtonTap,
+    haptic: CalSnapHapticEffect? = CalSnapHapticEffect.Light,
     content: @Composable RowScope.() -> Unit,
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.25f
@@ -242,7 +244,7 @@ fun CalSnapPrimaryButton(
             .clip(RoundedCornerShape(22.dp))
             .background(brush)
             .border(BorderStroke(0.5.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(22.dp))
-            .calSnapClickable(enabled = enabled, pressedScale = 0.96f, onClick = onClick),
+            .calSnapClickable(enabled = enabled, pressedScale = 0.96f, sound = sound, haptic = haptic, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
@@ -263,6 +265,8 @@ fun CalSnapSecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     height: Dp = 52.dp,
+    sound: CalSnapSoundEffect? = CalSnapSoundEffect.ButtonTap,
+    haptic: CalSnapHapticEffect? = CalSnapHapticEffect.Light,
     content: @Composable RowScope.() -> Unit,
 ) {
     Box(
@@ -272,7 +276,7 @@ fun CalSnapSecondaryButton(
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
             .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.20f)), RoundedCornerShape(20.dp))
-            .calSnapClickable(enabled = enabled, pressedScale = 0.96f, onClick = onClick),
+            .calSnapClickable(enabled = enabled, pressedScale = 0.96f, sound = sound, haptic = haptic, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {

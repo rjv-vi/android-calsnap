@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -68,7 +69,9 @@ import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapStepDots
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapWheelPicker
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 import java.time.LocalDate
@@ -81,6 +84,7 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val draft by viewModel.draft.collectAsStateWithLifecycle()
+    val effects = LocalCalSnapEffects.current
     var height by remember(draft.heightCm) {
         mutableStateOf(if (draft.heightCm > 0f) draft.heightCm.toInt().toString() else "")
     }
@@ -100,6 +104,7 @@ fun OnboardingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp)
                 .widthIn(max = 430.dp)
@@ -135,8 +140,15 @@ fun OnboardingScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 CalSnapPrimaryButton(
                     onClick = {
-                        if (step < 5) viewModel.update { it.copy(step = step + 1) } else viewModel.finish(onFinished)
+                        if (step < 5) {
+                            effects.sound.play(CalSnapSoundEffect.ObNext)
+                            viewModel.update { it.copy(step = step + 1) }
+                        } else {
+                            effects.sound.play(CalSnapSoundEffect.ObFinish)
+                            viewModel.finish(onFinished)
+                        }
                     },
+                    sound = null,
                     enabled = if (step < 5) canNext else canFinish,
                     modifier = Modifier.fillMaxWidth(),
                     height = 56.dp,
@@ -148,7 +160,11 @@ fun OnboardingScreen(
                 }
                 if (step > 1) {
                     CalSnapSecondaryButton(
-                        onClick = { viewModel.update { it.copy(step = step - 1) } },
+                        onClick = {
+                            effects.sound.play(CalSnapSoundEffect.Back)
+                            viewModel.update { it.copy(step = step - 1) }
+                        },
+                        sound = null,
                         modifier = Modifier.fillMaxWidth(),
                         height = 52.dp,
                     ) {
@@ -349,7 +365,7 @@ private fun GenderTile(
                 ),
                 shape,
             )
-            .calSnapClickable(pressedScale = 0.92f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.92f, sound = CalSnapSoundEffect.Select, onClick = onClick)
             .padding(vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -397,7 +413,7 @@ private fun DobPickerField(dob: String, onDob: (String) -> Unit) {
                     BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)),
                     shape,
                 )
-                .calSnapClickable(pressedScale = 0.97f) { showPicker = true }
+                .calSnapClickable(pressedScale = 0.97f, sound = CalSnapSoundEffect.SheetOpen) { showPicker = true }
                 .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -858,7 +874,7 @@ private fun SelectableTile(
                 ),
                 shape,
             )
-            .calSnapClickable(pressedScale = 0.93f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.93f, sound = CalSnapSoundEffect.Select, onClick = onClick)
             .padding(horizontal = paddingHorizontal, vertical = paddingVertical),
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
         verticalArrangement = Arrangement.Center,
@@ -933,7 +949,7 @@ private fun PreferenceChip(icon: String, label: String, selected: Boolean, onCli
             .clip(shape)
             .background(background)
             .border(BorderStroke(1.5.dp, border), shape)
-            .calSnapClickable(pressedScale = 0.93f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.93f, sound = CalSnapSoundEffect.Select, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

@@ -1,6 +1,9 @@
 package app.calsnap.android
 
+import android.app.LocaleManager
+import android.content.res.Configuration
 import android.os.Bundle
+import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,13 +11,15 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.repository.UserRepository
 import app.calsnap.android.presentation.components.CalSnapEffectsProvider
@@ -43,14 +48,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         hideSystemNavigation()
+        lifecycleScope.launch {
+            prefs.seedAppearanceIfMissing(systemDarkTheme(), systemLanguage())
+        }
 
         splash.setKeepOnScreenCondition { !appState.bootResolved.value }
 
         setContent {
             val darkOverride by prefs.darkTheme.collectAsState(initial = null)
+            val language by prefs.storedLanguage.collectAsState(initial = null)
             val soundOn by prefs.soundOn.collectAsState(initial = true)
             val hapticOn by prefs.hapticOn.collectAsState(initial = true)
             val systemDark = isSystemInDarkTheme()
+            LaunchedEffect(language) {
+                language?.let(::applyLanguage)
+            }
             CalSnapTheme(darkTheme = darkOverride ?: systemDark, dynamicColor = false) {
                 CalSnapEffectsProvider(soundOn = soundOn, hapticOn = hapticOn) {
                     CalSnapFeedbackHost {
@@ -79,6 +91,20 @@ class MainActivity : ComponentActivity() {
         WindowCompat.getInsetsController(window, window.decorView).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.navigationBars())
+        }
+    }
+
+    private fun systemDarkTheme(): Boolean =
+        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+    private fun systemLanguage(): String =
+        if (resources.configuration.locales[0]?.language == "ru") "ru" else "en"
+
+    private fun applyLanguage(language: String) {
+        val tags = if (language == "ru") "ru" else "en"
+        val localeManager = getSystemService(LocaleManager::class.java)
+        if (localeManager.applicationLocales.toLanguageTags() != tags) {
+            localeManager.applicationLocales = LocaleList.forLanguageTags(tags)
         }
     }
 }

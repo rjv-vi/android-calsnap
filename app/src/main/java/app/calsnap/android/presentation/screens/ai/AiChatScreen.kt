@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,6 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
 import app.calsnap.android.presentation.components.CalSnapCard
 import app.calsnap.android.presentation.components.CalSnapScreen
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
@@ -57,12 +60,23 @@ fun AiChatScreen(
     viewModel: AiChatViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val effects = LocalCalSnapEffects.current
     LaunchedEffect(Unit) { viewModel.refreshKeyState() }
+    LaunchedEffect(ui.messages.size) {
+        val last = ui.messages.lastOrNull()
+        if (ui.messages.size > 1 && last?.fromUser == false) {
+            effects.sound.play(CalSnapSoundEffect.AiReply)
+        }
+    }
+    LaunchedEffect(ui.error) {
+        if (ui.error != null) effects.sound.play(CalSnapSoundEffect.AiError)
+    }
 
     CalSnapScreen(glow = false) {
         Column(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .imePadding(),
         ) {
             AiHeader(onBack = onBack)
             QuickPrompts(enabled = ui.hasApiKey && !ui.loading, onPrompt = viewModel::updateInput)
@@ -96,7 +110,7 @@ private fun AiHeader(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            AiCircleButton(text = "‹", onClick = onBack)
+            AiCircleButton(text = "‹", sound = CalSnapSoundEffect.Back, onClick = onBack)
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -122,21 +136,21 @@ private fun AiHeader(onBack: () -> Unit) {
                     Text(stringResource(R.string.ai_online), color = Color(0xFF22C55E), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
             }
-            AiCircleButton(text = "↻", onClick = {})
+            AiCircleButton(text = "↻", sound = CalSnapSoundEffect.ButtonTap, onClick = {})
         }
         Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f), thickness = 0.5.dp)
     }
 }
 
 @Composable
-private fun AiCircleButton(text: String, onClick: () -> Unit) {
+private fun AiCircleButton(text: String, sound: CalSnapSoundEffect, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
             .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape)
-            .calSnapClickable(pressedScale = 0.84f, onClick = onClick),
+            .calSnapClickable(pressedScale = 0.84f, sound = sound, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
@@ -182,7 +196,7 @@ private fun AiSuggestionChip(text: String, onClick: (() -> Unit)?) {
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), RoundedCornerShape(20.dp))
-            .then(if (onClick != null) Modifier.calSnapClickable(pressedScale = 0.91f, onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.calSnapClickable(pressedScale = 0.91f, sound = CalSnapSoundEffect.AiSend, onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -300,6 +314,7 @@ private fun ErrorCard(message: String) {
 
 @Composable
 private fun InputBar(ui: AiChatViewModel.UiState, viewModel: AiChatViewModel) {
+    val effects = LocalCalSnapEffects.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -358,7 +373,11 @@ private fun InputBar(ui: AiChatViewModel.UiState, viewModel: AiChatViewModel) {
                     .calSnapClickable(
                         enabled = ui.hasApiKey && ui.input.isNotBlank() && !ui.loading,
                         pressedScale = 0.84f,
-                        onClick = viewModel::send,
+                        sound = null,
+                        onClick = {
+                            effects.sound.play(CalSnapSoundEffect.AiSend)
+                            viewModel.send()
+                        },
                     ),
                 contentAlignment = Alignment.Center,
             ) {

@@ -217,7 +217,7 @@
     <string name="settings_reset_action">Сбросить</string>
     <string name="settings_reset_done">Данные сброшены</string>
     <string name="settings_export_done">Экспорт сохранён</string>
-    <string name="settings_footer_v">CalSnap Android · 0.1.0</string>
+    <string name="settings_footer_v">CalSnap Android · бета 1.0.0</string>
 
     <string name="progress_title">Прогресс</string>
     <string name="progress_streak">Стрик</string>

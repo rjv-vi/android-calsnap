@@ -345,7 +345,7 @@ private fun AppearanceCard(
             iconBrush = Brush.linearGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569))),
             title = stringResource(R.string.settings_dark_theme),
             checked = darkTheme == true,
-            onChange = { onTheme(if (it) true else null) },
+            onChange = { onTheme(it) },
         )
         SettingsDivider()
         ToggleValueRow(
@@ -712,7 +712,7 @@ private fun PreferencePill(value: String, selected: Set<String>, onPrefs: (Set<S
 
 @Composable
 private fun SaveSheetButton(onClick: () -> Unit) {
-    CalSnapPrimaryButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    CalSnapPrimaryButton(onClick = onClick, modifier = Modifier.fillMaxWidth(), sound = CalSnapSoundEffect.Save) {
         Text(stringResource(R.string.save))
     }
 }
@@ -808,12 +808,13 @@ private fun ApiKeyCard(
             onClick = { onSave(input); input = "" },
             enabled = input.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
+            sound = CalSnapSoundEffect.Save,
         ) {
             Text(stringResource(R.string.settings_api_save))
         }
         if (hasKey) {
             Spacer(Modifier.height(8.dp))
-            CalSnapSecondaryButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
+            CalSnapSecondaryButton(onClick = onClear, modifier = Modifier.fillMaxWidth(), sound = CalSnapSoundEffect.Delete) {
                 Text(stringResource(R.string.settings_api_clear))
             }
         }
@@ -839,7 +840,7 @@ private fun ModelCard(
             }
         }
         Spacer(Modifier.height(12.dp))
-        CalSnapSecondaryButton(onClick = onLoad, enabled = hasKey && !loading, modifier = Modifier.fillMaxWidth()) {
+        CalSnapSecondaryButton(onClick = onLoad, enabled = hasKey && !loading, modifier = Modifier.fillMaxWidth(), sound = CalSnapSoundEffect.Select) {
             if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 3.dp, color = CalSnapStreak)
             else Text(stringResource(R.string.settings_model_load))
         }
@@ -865,7 +866,7 @@ private fun ModelRow(model: GeminiClient.GeminiModelInfo, selected: Boolean, onS
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
-            .calSnapClickable(pressedScale = 0.97f, onClick = onSelect)
+            .calSnapClickable(pressedScale = 0.97f, sound = CalSnapSoundEffect.Select, onClick = onSelect)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

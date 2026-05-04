@@ -79,6 +79,7 @@ import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 import java.io.File
@@ -91,8 +92,15 @@ fun AddFoodScreen(
     sheetMode: Boolean = false,
     viewModel: AddFoodViewModel = hiltViewModel(),
 ) {
+    val effects = LocalCalSnapEffects.current
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.refreshKeyState() }
+    LaunchedEffect(ui.result) {
+        if (ui.result != null) effects.sound.play(CalSnapSoundEffect.ScanSuccess)
+    }
+    LaunchedEffect(ui.error) {
+        if (ui.error != null) effects.sound.play(CalSnapSoundEffect.AiError)
+    }
     val close = {
         viewModel.resetTransientState()
         onDismiss()
@@ -114,6 +122,7 @@ private fun AddFoodContent(
     onDismiss: () -> Unit,
     sheetMode: Boolean,
 ) {
+    val effects = LocalCalSnapEffects.current
     Column(
         modifier = Modifier
             .then(if (sheetMode) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
@@ -152,6 +161,7 @@ private fun AddFoodContent(
                             AddFoodViewModel.Tab.FAVOURITES -> FavouritesTab(
                                 favourites = ui.favourites,
                                 onAdd = { entry, multiplier ->
+                                    effects.sound.play(CalSnapSoundEffect.AddFood)
                                     viewModel.logFavourite(entry, multiplier)
                                     onDismiss()
                                 },
@@ -175,6 +185,7 @@ private fun AddFoodContent(
                 ResultCard(
                     result = result,
                     onConfirm = {
+                        effects.sound.play(CalSnapSoundEffect.AddFood)
                         viewModel.confirmAndLog(result, ui.resultSource)
                         onDismiss()
                     },
@@ -293,6 +304,7 @@ private fun BarcodeTab(viewModel: AddFoodViewModel, loading: Boolean) {
 @Composable
 private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
     val context = LocalContext.current
+    val effects = LocalCalSnapEffects.current
     var hint by remember { mutableStateOf("") }
     var selectedName by remember { mutableStateOf<String?>(null) }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -327,6 +339,7 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
         )
         CalSnapPrimaryButton(
             onClick = {
+                effects.sound.play(CalSnapSoundEffect.PhotoSnap)
                 runCatching {
                     createCameraImageUri(context).also { uri ->
                         cameraUri = uri
@@ -345,7 +358,7 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
             text = stringResource(R.string.add_pick_photo),
             modifier = Modifier
                 .fillMaxWidth()
-                .calSnapClickable(enabled = !loading, pressedScale = 0.98f) { picker.launch("image/*") }
+                .calSnapClickable(enabled = !loading, pressedScale = 0.98f, sound = CalSnapSoundEffect.Select) { picker.launch("image/*") }
                 .padding(vertical = 8.dp),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (loading) 0.38f else 1f),
@@ -436,7 +449,7 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .calSnapClickable(pressedScale = 0.98f, onClick = onAdd)
+            .calSnapClickable(pressedScale = 0.98f, sound = CalSnapSoundEffect.CardTap, onClick = onAdd)
             .padding(horizontal = 2.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -462,7 +475,7 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
         Text(
             "✕",
             modifier = Modifier
-                .calSnapClickable(pressedScale = 0.85f, onClick = onRemove)
+                .calSnapClickable(pressedScale = 0.85f, sound = CalSnapSoundEffect.Delete, onClick = onRemove)
                 .padding(horizontal = 4.dp, vertical = 6.dp),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -471,7 +484,7 @@ private fun FavouriteRow(entry: FoodLogEntity, selected: Boolean, onAdd: () -> U
         Text(
             if (selected) stringResource(R.string.add_favourite_selected) else stringResource(R.string.add_favourite_choose_portion),
             modifier = Modifier
-                .calSnapClickable(pressedScale = 0.94f, onClick = onAdd)
+                .calSnapClickable(pressedScale = 0.94f, sound = CalSnapSoundEffect.Select, onClick = onAdd)
                 .padding(horizontal = 2.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,

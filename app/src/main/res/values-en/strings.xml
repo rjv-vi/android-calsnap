@@ -208,7 +208,7 @@
     <string name="settings_reset_action">Reset</string>
     <string name="settings_reset_done">Data reset</string>
     <string name="settings_export_done">Export saved</string>
-    <string name="settings_footer_v">CalSnap Android · 0.1.0</string>
+    <string name="settings_footer_v">CalSnap Android · beta 1.0.0</string>
 
     <string name="progress_title">Progress</string>
     <string name="progress_streak">Streak</string>

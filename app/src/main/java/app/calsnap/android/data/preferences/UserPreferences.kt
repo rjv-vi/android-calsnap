@@ -108,6 +108,9 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     val language: Flow<String> =
         data.map { it[Keys.LANGUAGE] ?: "ru" }
 
+    val storedLanguage: Flow<String?> =
+        data.map { it[Keys.LANGUAGE] }
+
     val soundOn: Flow<Boolean> =
         data.map { it[Keys.SOUND_ON] ?: true }
 
@@ -117,8 +120,13 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     val geminiModel: Flow<String> =
         data.map { it[Keys.GEMINI_MODEL] ?: "gemini-2.0-flash-lite" }
 
+    suspend fun seedAppearanceIfMissing(darkTheme: Boolean, language: String) = context.prefsDataStore.edit {
+        if (!it.contains(Keys.DARK_THEME)) it[Keys.DARK_THEME] = darkTheme
+        if (!it.contains(Keys.LANGUAGE)) it[Keys.LANGUAGE] = language
+    }
+
     suspend fun setDarkTheme(on: Boolean?) = context.prefsDataStore.edit {
-        if (on == null) it.remove(Keys.DARK_THEME) else it[Keys.DARK_THEME] = on
+        it[Keys.DARK_THEME] = on ?: false
     }
     suspend fun setLanguage(code: String) = context.prefsDataStore.edit { it[Keys.LANGUAGE] = code }
     suspend fun setSoundOn(on: Boolean)   = context.prefsDataStore.edit { it[Keys.SOUND_ON]  = on }

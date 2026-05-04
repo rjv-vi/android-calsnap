@@ -12,14 +12,14 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "app.calsnap.android"
+        applicationId = "app.rjv.calsnap"
         // Android 13+ only — see ARCHITECTURE.md for why we deliberately
         // skip backwards compat (Material You everywhere, themed icons,
         // per-app language, modern notification permission model).
         minSdk = 33
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "бета 1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -31,8 +31,6 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
             isMinifyEnabled = false
         }
         release {

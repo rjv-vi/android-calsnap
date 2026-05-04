@@ -70,6 +70,8 @@ import app.calsnap.android.presentation.components.CalSnapPrimaryButton
 import app.calsnap.android.presentation.components.CalSnapProgressBar
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
+import app.calsnap.android.presentation.components.CalSnapSoundEffect
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 import app.calsnap.android.ui.theme.MacroWater
@@ -128,6 +130,7 @@ fun ProgressScreen(
     viewModel: ProgressViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val effects = LocalCalSnapEffects.current
     var showWeightSheet by remember { mutableStateOf(false) }
     val weightSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -144,12 +147,26 @@ fun ProgressScreen(
             AnimatedSection(1) { StreakWeekCard(ui) }
             AnimatedSection(2) { BmiCard(ui.bmi) }
             AnimatedSection(3) { StatsGrid(ui) }
-            AnimatedSection(4) { WaterCard(ui = ui, onAdd = viewModel::addWater, onUndo = viewModel::undoLastWater) }
+            AnimatedSection(4) {
+                WaterCard(
+                    ui = ui,
+                    onAdd = { ml ->
+                        val reachesGoal = ui.waterMl < ui.waterGoalMl && ui.waterMl + ml >= ui.waterGoalMl
+                        effects.sound.play(if (reachesGoal) CalSnapSoundEffect.WaterGoal else CalSnapSoundEffect.WaterAdd)
+                        viewModel.addWater(ml)
+                    },
+                    onUndo = {
+                        effects.sound.play(CalSnapSoundEffect.WaterUndo)
+                        viewModel.undoLastWater()
+                    },
+                )
+            }
             AnimatedSection(5) { HeatmapCard(ui.days, ui.profile?.kcalGoal ?: 2000) }
             AnimatedSection(6) {
                 WeightCard(
                     ui = ui,
                     onLogWeight = {
+                        effects.sound.play(CalSnapSoundEffect.SheetOpen)
                         viewModel.prepareWeightDraft()
                         showWeightSheet = true
                     },
@@ -160,7 +177,10 @@ fun ProgressScreen(
 
     if (showWeightSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showWeightSheet = false },
+            onDismissRequest = {
+                effects.sound.play(CalSnapSoundEffect.SheetClose)
+                showWeightSheet = false
+            },
             sheetState = weightSheetState,
             containerColor = MaterialTheme.colorScheme.surface,
             scrimColor = Color.Black.copy(alpha = 0.45f),
@@ -174,10 +194,14 @@ fun ProgressScreen(
                 onDraft = viewModel::updateWeightDraft,
                 onStep = viewModel::stepWeight,
                 onSave = {
+                    effects.sound.play(CalSnapSoundEffect.WeightLog)
                     viewModel.saveWeight()
                     showWeightSheet = false
                 },
-                onCancel = { showWeightSheet = false },
+                onCancel = {
+                    effects.sound.play(CalSnapSoundEffect.SheetClose)
+                    showWeightSheet = false
+                },
             )
         }
     }
@@ -526,7 +550,7 @@ private fun DrinkButton(spec: DrinkButtonSpec, onClick: () -> Unit, modifier: Mo
     Column(
         modifier = modifier
             .height(78.dp)
-            .calSnapClickable(pressedScale = 0.82f, onClick = onClick)
+            .calSnapClickable(pressedScale = 0.82f, sound = null, onClick = onClick)
             .padding(horizontal = 5.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -570,7 +594,7 @@ private fun WaterTimeline(events: List<ProgressViewModel.WaterEvent>, onUndo: ()
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .calSnapClickable(pressedScale = 0.90f, onClick = onUndo)
+                        .calSnapClickable(pressedScale = 0.90f, sound = null, onClick = onUndo)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -667,7 +691,7 @@ private fun WeightCard(ui: ProgressViewModel.UiState, onLogWeight: () -> Unit) {
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f))
                     .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)), RoundedCornerShape(24.dp))
-                    .calSnapClickable(pressedScale = 0.92f, onClick = onLogWeight)
+                    .calSnapClickable(pressedScale = 0.92f, sound = null, onClick = onLogWeight)
                     .padding(horizontal = 16.dp, vertical = 9.dp),
             ) {
                 Text(stringResource(R.string.progress_weight_log), style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
