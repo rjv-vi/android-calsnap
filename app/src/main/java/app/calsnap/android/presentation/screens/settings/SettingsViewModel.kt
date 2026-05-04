@@ -6,6 +6,7 @@ import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.data.model.UserProfile
+import app.calsnap.android.data.repository.DataExportRepository
 import app.calsnap.android.domain.BmrCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,14 @@ class SettingsViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val keyStore: SecureKeyStore,
     private val geminiClient: GeminiClient,
+    private val dataExportRepository: DataExportRepository,
 ) : ViewModel() {
+
+    data class ExportPayload(
+        val fileName: String,
+        val mimeType: String,
+        val content: String,
+    )
 
     data class UiState(
         val darkTheme: Boolean? = null,
@@ -33,6 +41,9 @@ class SettingsViewModel @Inject constructor(
         val models: List<GeminiClient.GeminiModelInfo> = emptyList(),
         val modelsLoading: Boolean = false,
         val modelsError: String? = null,
+        val exportLoading: Boolean = false,
+        val exportPayload: ExportPayload? = null,
+        val exportError: String? = null,
     )
 
     private val _ui = MutableStateFlow(UiState(hasGeminiKey = safeHasGeminiKey()))
@@ -95,8 +106,38 @@ class SettingsViewModel @Inject constructor(
             prefs.saveProfile(if (recalculateTargets) updated.withCalculatedTargets() else updated)
         }
     }
+    fun prepareJsonExport() = prepareExport("json")
+    fun prepareCsvExport() = prepareExport("csv")
+    fun consumeExport() = _ui.update { it.copy(exportPayload = null) }
+    fun resetAllData() = viewModelScope.launch { dataExportRepository.resetAll() }
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
+
+    private fun prepareExport(type: String) {
+        _ui.update { it.copy(exportLoading = true, exportError = null, exportPayload = null) }
+        viewModelScope.launch {
+            runCatching {
+                val date = java.time.LocalDate.now().toString()
+                if (type == "json") {
+                    ExportPayload(
+                        fileName = "calsnap-backup-$date.json",
+                        mimeType = "application/json",
+                        content = dataExportRepository.exportJsonString(),
+                    )
+                } else {
+                    ExportPayload(
+                        fileName = "calsnap-$date.csv",
+                        mimeType = "text/csv",
+                        content = dataExportRepository.exportCsvString(),
+                    )
+                }
+            }.onSuccess { payload ->
+                _ui.update { it.copy(exportLoading = false, exportPayload = payload) }
+            }.onFailure { error ->
+                _ui.update { it.copy(exportLoading = false, exportError = error.message) }
+            }
+        }
+    }
 
     private fun UserProfile.withCalculatedTargets(): UserProfile {
         val age = BmrCalculator.ageFromDob(dob)

@@ -31,6 +31,9 @@ interface FoodLogDao {
     )
     fun observeRange(startMs: Long, endMs: Long): Flow<List<FoodLogEntity>>
 
+    @Query("SELECT * FROM food_log ORDER BY loggedAt DESC")
+    suspend fun listAll(): List<FoodLogEntity>
+
     @Query("SELECT * FROM food_log WHERE favourite = 1 ORDER BY loggedAt DESC")
     suspend fun listFavourites(): List<FoodLogEntity>
 

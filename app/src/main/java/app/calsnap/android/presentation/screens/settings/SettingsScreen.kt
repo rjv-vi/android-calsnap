@@ -1,5 +1,7 @@
 package app.calsnap.android.presentation.screens.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +27,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +52,7 @@ import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.domain.BmrCalculator
 import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
+import app.calsnap.android.presentation.components.CalSnapConfirmDialog
 import app.calsnap.android.presentation.components.CalSnapHapticEffect
 import app.calsnap.android.presentation.components.CalSnapIconTile
 import app.calsnap.android.presentation.components.CalSnapPill
@@ -56,6 +61,8 @@ import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.CalSnapSecondaryButton
 import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.CalSnapTextField
+import app.calsnap.android.presentation.components.LocalCalSnapEffects
+import app.calsnap.android.presentation.components.LocalCalSnapToastHost
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
@@ -64,6 +71,39 @@ import app.calsnap.android.ui.theme.CalSnapStreak
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var profileSheet by remember { mutableStateOf<ProfileSheet?>(null) }
+    var resetConfirm by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val toast = LocalCalSnapToastHost.current
+    val effects = LocalCalSnapEffects.current
+    val jsonLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val payload = ui.exportPayload
+        if (uri != null && payload != null) {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(payload.content.toByteArray()) }
+            effects.haptic.play(CalSnapHapticEffect.Success)
+            effects.sound.play(CalSnapSoundEffect.ExportDone)
+            toast.show(context.getString(R.string.settings_export_done))
+        }
+        viewModel.consumeExport()
+    }
+    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        val payload = ui.exportPayload
+        if (uri != null && payload != null) {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(payload.content.toByteArray()) }
+            effects.haptic.play(CalSnapHapticEffect.Success)
+            effects.sound.play(CalSnapSoundEffect.ExportDone)
+            toast.show(context.getString(R.string.settings_export_done))
+        }
+        viewModel.consumeExport()
+    }
+
+    LaunchedEffect(ui.exportPayload) {
+        val payload = ui.exportPayload ?: return@LaunchedEffect
+        if (payload.mimeType == "application/json") jsonLauncher.launch(payload.fileName)
+        else csvLauncher.launch(payload.fileName)
+    }
+    LaunchedEffect(ui.exportError) {
+        ui.exportError?.let { toast.show(it) }
+    }
 
     CalSnapScreen {
         Column(
@@ -125,6 +165,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 SectionLabel(stringResource(R.string.settings_section_profile))
                 ProfileCard(profile = ui.profile, onEdit = { profileSheet = it })
             }
+            AnimatedSection(5) {
+                SectionLabel(stringResource(R.string.settings_section_data))
+                DataCard(
+                    loading = ui.exportLoading,
+                    onExportCsv = viewModel::prepareCsvExport,
+                    onExportJson = viewModel::prepareJsonExport,
+                    onReset = { resetConfirm = true },
+                )
+            }
             Text(
                 text = stringResource(R.string.settings_footer_v),
                 style = MaterialTheme.typography.labelSmall,
@@ -152,6 +201,23 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             )
         }
     }
+    CalSnapConfirmDialog(
+        visible = resetConfirm,
+        icon = "🗑️",
+        title = stringResource(R.string.settings_reset_title),
+        body = stringResource(R.string.settings_reset_body),
+        actionLabel = stringResource(R.string.settings_reset_action),
+        onConfirm = {
+            resetConfirm = false
+            viewModel.resetAllData()
+            effects.haptic.play(CalSnapHapticEffect.Heavy)
+            effects.sound.play(CalSnapSoundEffect.ResetConfirm)
+            toast.show(context.getString(R.string.settings_reset_done))
+        },
+        onDismiss = { resetConfirm = false },
+        cancelLabel = stringResource(R.string.cancel),
+        destructive = true,
+    )
 }
 
 @Composable
@@ -192,6 +258,44 @@ private fun ProfileCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
             subtitle = profile?.prefsSummary() ?: stringResource(R.string.settings_profile_no_prefs),
             value = "›",
             onClick = { onEdit(ProfileSheet.PREFS) },
+        )
+    }
+}
+
+@Composable
+private fun DataCard(
+    loading: Boolean,
+    onExportCsv: () -> Unit,
+    onExportJson: () -> Unit,
+    onReset: () -> Unit,
+) {
+    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(0.dp), elevation = 14.dp) {
+        SettingsValueRow(
+            icon = "📊",
+            title = stringResource(R.string.settings_export_csv),
+            value = if (loading) "…" else "›",
+            onClick = onExportCsv,
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "⬇️",
+            title = stringResource(R.string.settings_export_json),
+            value = if (loading) "…" else "›",
+            onClick = onExportJson,
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "⬆️",
+            title = stringResource(R.string.settings_import_json),
+            subtitle = stringResource(R.string.settings_import_json_sub),
+            value = "›",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🗑️",
+            title = stringResource(R.string.settings_reset_all),
+            value = "",
+            onClick = onReset,
         )
     }
 }

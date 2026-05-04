@@ -19,6 +19,9 @@ interface WaterDao {
     )
     fun observeDay(startOfDayMs: Long, endOfDayMs: Long): Flow<List<WaterEntity>>
 
+    @Query("SELECT * FROM water_log ORDER BY loggedAt DESC")
+    suspend fun listAll(): List<WaterEntity>
+
     @Query(
         """
         SELECT COALESCE(SUM(milliliters), 0) FROM water_log

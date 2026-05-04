@@ -175,6 +175,7 @@
     <string name="settings_section_ai">AI</string>
     <string name="settings_section_appearance">Внешний вид</string>
     <string name="settings_section_profile">Профиль</string>
+    <string name="settings_section_data">Данные</string>
     <string name="settings_api_set">API ключ установлен ✓</string>
     <string name="settings_api_not_set">API ключ не установлен</string>
     <string name="settings_api_hint">Gemini API ключ (AIza…)</string>
@@ -195,6 +196,16 @@
     <string name="settings_profile_kcal_sub">Авторасчёт по параметрам</string>
     <string name="settings_profile_prefs">Предпочтения и аллергии</string>
     <string name="settings_profile_no_prefs">Не указаны</string>
+    <string name="settings_export_csv">Экспорт в CSV (Excel)</string>
+    <string name="settings_export_json">Экспорт данных (JSON)</string>
+    <string name="settings_import_json">Импорт данных (JSON)</string>
+    <string name="settings_import_json_sub">Следующий шаг M2</string>
+    <string name="settings_reset_all">Сбросить все данные</string>
+    <string name="settings_reset_title">Сбросить все данные?</string>
+    <string name="settings_reset_body">Профиль, дневник, вода, вес, любимые блюда и API ключ будут удалены с устройства.</string>
+    <string name="settings_reset_action">Сбросить</string>
+    <string name="settings_reset_done">Данные сброшены</string>
+    <string name="settings_export_done">Экспорт сохранён</string>
     <string name="settings_footer_v">CalSnap Android · 0.1.0</string>
 
     <string name="progress_title">Прогресс</string>

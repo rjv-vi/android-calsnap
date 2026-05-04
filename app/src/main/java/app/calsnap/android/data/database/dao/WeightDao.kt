@@ -12,6 +12,9 @@ interface WeightDao {
     @Query("SELECT * FROM weight_log ORDER BY loggedAt DESC")
     fun observeAll(): Flow<List<WeightEntity>>
 
+    @Query("SELECT * FROM weight_log ORDER BY loggedAt DESC")
+    suspend fun listAll(): List<WeightEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(weight: WeightEntity): Long
 
