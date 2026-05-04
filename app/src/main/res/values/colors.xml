@@ -4,5 +4,5 @@
     <color name="calsnap_orange_light">#FFFF9A5C</color>
     <color name="calsnap_orange_dark">#FFCC5F1C</color>
     <color name="calsnap_bg_light">#FFF2F0EB</color>
-    <color name="calsnap_bg_dark">#FF0F0E0C</color>
+    <color name="calsnap_bg_dark">#FF000000</color>
 </resources>
