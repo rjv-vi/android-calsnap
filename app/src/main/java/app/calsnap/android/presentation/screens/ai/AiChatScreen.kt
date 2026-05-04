@@ -106,37 +106,24 @@ private fun AiHeader(onBack: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             AiCircleButton(text = "‹", sound = CalSnapSoundEffect.Back, onClick = onBack)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("CalSnap GPT", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(stringResource(R.string.ai_online), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(Color(0xFF2A2622), Color(0xFF141210))))
-                    .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), CircleShape),
+                    .background(MaterialTheme.colorScheme.onSurface),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🤖", style = MaterialTheme.typography.titleMedium)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF22C55E))
-                        .border(androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface), CircleShape),
-                )
+                Text("C", color = MaterialTheme.colorScheme.background, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
             }
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF22C55E)))
-                    Text(stringResource(R.string.ai_online), color = Color(0xFF22C55E), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                }
-            }
-            AiCircleButton(text = "↻", sound = CalSnapSoundEffect.ButtonTap, onClick = {})
         }
         Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f), thickness = 0.5.dp)
     }
@@ -230,49 +217,40 @@ private fun MessageBubble(message: AiChatViewModel.ChatMessage, index: Int) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start,
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(0.84f),
-                horizontalAlignment = if (message.fromUser) Alignment.End else Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (!message.fromUser) {
-                    Text(
-                        text = stringResource(R.string.nav_ai).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 36.dp, bottom = 1.dp),
-                    )
-                }
+            if (message.fromUser) {
                 Box(
                     modifier = Modifier
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 20.dp,
-                                topEnd = 20.dp,
-                                bottomStart = if (message.fromUser) 20.dp else 5.dp,
-                                bottomEnd = if (message.fromUser) 5.dp else 20.dp,
-                            ),
-                        )
-                        .background(if (message.fromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                        .border(
-                            androidx.compose.foundation.BorderStroke(
-                                0.5.dp,
-                                if (message.fromUser) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
-                            ),
-                            RoundedCornerShape(
-                                topStart = 20.dp,
-                                topEnd = 20.dp,
-                                bottomStart = if (message.fromUser) 20.dp else 5.dp,
-                                bottomEnd = if (message.fromUser) 5.dp else 20.dp,
-                            ),
-                        )
-                        .padding(horizontal = 15.dp, vertical = 11.dp),
+                        .fillMaxWidth(0.84f)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        .padding(horizontal = 16.dp, vertical = 11.dp),
                 ) {
                     Text(
                         message.text,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (message.fromUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.onSurface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("C", color = MaterialTheme.colorScheme.background, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+                    }
+                    Text(
+                        message.text,
+                        modifier = Modifier.weight(1f).padding(top = 3.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -283,17 +261,9 @@ private fun MessageBubble(message: AiChatViewModel.ChatMessage, index: Int) {
 @Composable
 private fun TypingBubble() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 5.dp, bottomEnd = 20.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 5.dp, bottomEnd = 20.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 3.dp, color = CalSnapStreak)
-                Text(stringResource(R.string.ai_typing), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 3.dp, color = CalSnapStreak)
+            Text(stringResource(R.string.ai_typing), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
         }
     }
 }

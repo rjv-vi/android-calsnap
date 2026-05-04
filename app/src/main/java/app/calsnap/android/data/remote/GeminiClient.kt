@@ -42,6 +42,7 @@ class GeminiClient @Inject constructor(
     class GeminiApiException(val statusCode: Int, message: String) : IllegalStateException(message)
 
     private val defaultFallbackChain = listOf(
+        "gemini-flash-lite-latest",
         "gemini-2.0-flash-lite",
         "gemini-2.0-flash",
         "gemini-2.5-flash",
@@ -119,6 +120,19 @@ class GeminiClient @Inject constructor(
         throw lastError ?: IllegalStateException("Gemini: all models failed")
     }
 
+    suspend fun analyzeFoodText(
+        text: String,
+        modelName: String? = null,
+    ): FoodAnalysisResult {
+        val raw = generateTextWithFallback(
+            prompt = "Описание пользователя: \"$text\". Оцени одну реалистичную порцию, калории и БЖУ. Верни только JSON.",
+            systemInstruction = "Ты русскоязычный нутрициолог CalSnap. JSON-схема: {\"food\":\"string\",\"portion\":\"string\",\"calories\":0,\"protein\":0,\"fat\":0,\"carbs\":0,\"description\":\"string\",\"ingredients\":[\"string\"]}. Не добавляй markdown.",
+            modelName = modelName,
+            preferJson = true,
+        )
+        return decodeFoodAnalysis(raw)
+    }
+
     suspend fun analyzeFoodPhoto(
         bitmap: Bitmap,
         userHint: String?,
@@ -133,7 +147,7 @@ class GeminiClient @Inject constructor(
                     parts = listOf(textPart(buildPhotoPrompt(userHint)), imagePart),
                     preferJson = true,
                 )
-                return json.decodeFromString(FoodAnalysisResult.serializer(), sanitizeJson(raw))
+                return decodeFoodAnalysis(raw)
             }.onFailure { lastError = it }
         }
         throw lastError ?: IllegalStateException("Gemini photo: all models failed")
@@ -152,7 +166,7 @@ class GeminiClient @Inject constructor(
                     parts = listOf(textPart(buildBarcodePhotoPrompt()), imagePart),
                     preferJson = true,
                 )
-                return json.decodeFromString(FoodAnalysisResult.serializer(), sanitizeJson(raw))
+                return decodeFoodAnalysis(raw)
             }.onFailure { lastError = it }
         }
         throw lastError ?: IllegalStateException("Gemini barcode photo: all models failed")
@@ -250,6 +264,61 @@ class GeminiClient @Inject constructor(
         val end = if (start == objectStart) value.lastIndexOf('}') else value.lastIndexOf(']')
         if (end > start) value = value.substring(start, end + 1)
         return value
+    }
+
+    private fun decodeFoodAnalysis(raw: String): FoodAnalysisResult {
+        val sanitized = sanitizeJson(raw)
+        return runCatching {
+            json.decodeFromString(FoodAnalysisResult.serializer(), sanitized)
+        }.getOrElse {
+            repairFoodAnalysis(sanitized)
+        }
+    }
+
+    private fun repairFoodAnalysis(raw: String): FoodAnalysisResult {
+        fun stringField(name: String): String? =
+            Regex("\"$name\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
+                .find(raw)
+                ?.groupValues
+                ?.get(1)
+                ?.replace("\\\"", "\"")
+                ?.replace("\\n", "\n")
+                ?.replace("\\\\", "\\")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+
+        fun floatField(name: String): Float? =
+            Regex("\"$name\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)")
+                .find(raw)
+                ?.groupValues
+                ?.get(1)
+                ?.toFloatOrNull()
+
+        fun intField(name: String): Int? = floatField(name)?.toInt()
+
+        val ingredients = Regex("\"ingredients\"\\s*:\\s*\\[(.*?)]", RegexOption.DOT_MATCHES_ALL)
+            .find(raw)
+            ?.groupValues
+            ?.get(1)
+            ?.let { body ->
+                Regex("\"((?:\\\\.|[^\"\\\\])*)\"")
+                    .findAll(body)
+                    .map { it.groupValues[1].replace("\\\"", "\"").trim() }
+                    .filter { it.isNotBlank() }
+                    .toList()
+            }
+            .orEmpty()
+
+        return FoodAnalysisResult(
+            food = stringField("food") ?: stringField("name") ?: "Продукт",
+            portion = stringField("portion").orEmpty(),
+            calories = intField("calories") ?: intField("kcal") ?: 0,
+            protein = floatField("protein") ?: floatField("prot") ?: 0f,
+            fat = floatField("fat") ?: 0f,
+            carbs = floatField("carbs") ?: floatField("carb") ?: 0f,
+            description = stringField("description").orEmpty(),
+            ingredients = ingredients,
+        )
     }
 
     private fun parseError(statusCode: Int, body: String): String {

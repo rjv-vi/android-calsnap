@@ -1,6 +1,8 @@
 package app.calsnap.android.presentation.screens.add
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -10,9 +12,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -72,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
@@ -311,22 +319,33 @@ private fun BarcodeTab(viewModel: AddFoodViewModel, loading: Boolean) {
         val uri = cameraUri
         if (saved && uri != null) analyzeBarcodeUri(uri, context.getString(R.string.add_photo_camera_selected))
     }
+    fun openCamera() {
+        effects.sound.play(CalSnapSoundEffect.BarcodeScan)
+        runCatching {
+            createCameraImageUri(context).also { uri ->
+                cameraUri = uri
+                camera.launch(uri)
+            }
+        }.onFailure { error ->
+            viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
+        }
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) openCamera() else viewModel.setError(context.getString(R.string.add_camera_permission_needed))
+    }
+    fun requestCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            openCamera()
+        } else {
+            cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ScanBox(
             title = stringResource(R.string.add_barcode_title),
             subtitle = stringResource(R.string.add_barcode_subtitle),
             loading = loading,
-            onCamera = {
-                effects.sound.play(CalSnapSoundEffect.BarcodeScan)
-                runCatching {
-                    createCameraImageUri(context).also { uri ->
-                        cameraUri = uri
-                        camera.launch(uri)
-                    }
-                }.onFailure { error ->
-                    viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
-                }
-            },
+            onCamera = ::requestCamera,
             onGallery = {
                 effects.sound.play(CalSnapSoundEffect.BarcodeScan)
                 picker.launch("image/*")
@@ -396,6 +415,27 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
             loadUri(uri, context.getString(R.string.add_photo_camera_selected))
         }
     }
+    fun openCamera() {
+        effects.sound.play(CalSnapSoundEffect.PhotoSnap)
+        runCatching {
+            createCameraImageUri(context).also { uri ->
+                cameraUri = uri
+                camera.launch(uri)
+            }
+        }.onFailure { error ->
+            viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
+        }
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) openCamera() else viewModel.setError(context.getString(R.string.add_camera_permission_needed))
+    }
+    fun requestCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            openCamera()
+        } else {
+            cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         val preview = previewBitmap
         if (preview == null) {
@@ -404,17 +444,7 @@ private fun PhotoTab(viewModel: AddFoodViewModel, loading: Boolean) {
                 title = stringResource(R.string.add_photo_title),
                 subtitle = stringResource(R.string.add_photo_subtitle),
                 loading = loading,
-                onCamera = {
-                    effects.sound.play(CalSnapSoundEffect.PhotoSnap)
-                    runCatching {
-                        createCameraImageUri(context).also { uri ->
-                            cameraUri = uri
-                            camera.launch(uri)
-                        }
-                    }.onFailure { error ->
-                        viewModel.setError(error.message ?: context.getString(R.string.add_camera_failed))
-                    }
-                },
+                onCamera = ::requestCamera,
                 onGallery = {
                     effects.sound.play(CalSnapSoundEffect.Select)
                     picker.launch("image/*")
@@ -541,6 +571,16 @@ private fun ScanBox(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
 ) {
+    val scanTransition = rememberInfiniteTransition(label = "barcodeScan")
+    val scanY by scanTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 68f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "barcodeScanLine",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -560,7 +600,7 @@ private fun ScanBox(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp)
-                    .align(Alignment.TopCenter)
+                    .offset(y = scanY.dp)
                     .background(MaterialTheme.colorScheme.onSurface),
             )
         }
@@ -977,35 +1017,84 @@ private fun ErrorCard(message: String) {
 
 @Composable
 private fun ResultCard(result: FoodAnalysisResult, onConfirm: () -> Unit) {
-    CalSnapCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        padding = PaddingValues(18.dp),
-        containerBrush = Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)),
-        borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-        elevation = 18.dp,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                Text("✅", style = MaterialTheme.typography.headlineSmall)
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(addSurface2Color())
+                .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)), RoundedCornerShape(22.dp))
+                .padding(18.dp),
+        ) {
+            Text(
+                result.food,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (result.portion.isNotBlank()) {
+                Text(
+                    result.portion,
+                    modifier = Modifier.padding(top = 3.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                )
             }
-            Column(Modifier.weight(1f)) {
-                Text(result.food, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (result.portion.isNotBlank()) {
-                    Text(result.portion, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Row(
+                modifier = Modifier.padding(top = 14.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Text(
+                    "${result.calories}",
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    stringResource(R.string.unit_kcal),
+                    modifier = Modifier.padding(bottom = 9.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MacroPill(stringResource(R.string.macro_p_short), result.protein, addMacroProteinColor(), Modifier.weight(1f))
+                MacroPill(stringResource(R.string.macro_c_short), result.carbs, addMacroCarbsColor(), Modifier.weight(1f))
+                MacroPill(stringResource(R.string.macro_f_short), result.fat, addMacroFatColor(), Modifier.weight(1f))
+            }
+            if (result.description.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                )
+                Text(
+                    result.description,
+                    modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                )
+            }
+            if (result.ingredients.isNotEmpty()) {
+                Text(
+                    result.ingredients.take(8).joinToString(" • "),
+                    modifier = Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Text("${result.calories}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
-        Text(stringResource(R.string.unit_kcal), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MacroPill(stringResource(R.string.macro_p_short), result.protein, addMacroProteinColor(), Modifier.weight(1f))
-            MacroPill(stringResource(R.string.macro_c_short), result.carbs, addMacroCarbsColor(), Modifier.weight(1f))
-            MacroPill(stringResource(R.string.macro_f_short), result.fat, addMacroFatColor(), Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(16.dp))
         CalSnapPrimaryButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.add_confirm_add))
         }

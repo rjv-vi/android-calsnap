@@ -99,6 +99,7 @@
     <string name="add_pick_photo">Gallery</string>
     <string name="add_photo_camera_selected">Camera photo</string>
     <string name="add_camera_failed">Could not open camera</string>
+    <string name="add_camera_permission_needed">Allow camera access to take a photo</string>
     <string name="add_change_photo">Change</string>
     <string name="add_analyze_photo">Analyze</string>
     <string name="add_barcode_hint">Barcode from package</string>
@@ -202,6 +203,8 @@
     <string name="settings_reset_all">Reset all data</string>
     <string name="settings_reminders">Reminders</string>
     <string name="settings_reminders_sub">Configure reminder times</string>
+    <string name="settings_notifications_permission_needed">Allow notifications to enable reminders</string>
+    <string name="settings_notifications_enabled">Notifications are enabled</string>
     <string name="settings_widgets">Widgets</string>
     <string name="settings_widgets_sub">Add to home screen</string>
     <string name="settings_authors">CalSnap authors</string>
@@ -210,6 +213,8 @@
     <string name="settings_reset_action">Reset</string>
     <string name="settings_reset_done">Data reset</string>
     <string name="settings_export_done">Export saved</string>
+    <string name="settings_import_done">Import complete</string>
+    <string name="settings_import_failed">Could not import file</string>
     <string name="settings_footer_v">CalSnap Android · beta 1.0.0</string>
 
     <string name="progress_title">Progress</string>

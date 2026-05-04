@@ -2,7 +2,6 @@ package app.calsnap.android.presentation.screens.progress
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -74,7 +73,6 @@ import app.calsnap.android.presentation.components.CalSnapSoundEffect
 import app.calsnap.android.presentation.components.LocalCalSnapEffects
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
-import app.calsnap.android.ui.theme.MacroWater
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -83,21 +81,6 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private val ProgressEaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-
-private data class DrinkButtonSpec(
-    val icon: String,
-    val labelRes: Int,
-    val milliliters: Int,
-)
-
-private val ProgressDrinkButtons = listOf(
-    DrinkButtonSpec("💧", R.string.progress_drink_water, 250),
-    DrinkButtonSpec("🍵", R.string.progress_drink_tea, 200),
-    DrinkButtonSpec("☕", R.string.progress_drink_coffee, 150),
-    DrinkButtonSpec("🧃", R.string.progress_drink_juice, 200),
-    DrinkButtonSpec("🥛", R.string.progress_drink_milk, 200),
-    DrinkButtonSpec("🫗", R.string.progress_drink_other, 200),
-)
 
 @Composable
 private fun ProgressCard(
@@ -147,22 +130,8 @@ fun ProgressScreen(
             AnimatedSection(1) { StreakWeekCard(ui) }
             AnimatedSection(2) { BmiCard(ui.bmi) }
             AnimatedSection(3) { StatsGrid(ui) }
-            AnimatedSection(4) {
-                WaterCard(
-                    ui = ui,
-                    onAdd = { ml ->
-                        val reachesGoal = ui.waterMl < ui.waterGoalMl && ui.waterMl + ml >= ui.waterGoalMl
-                        effects.sound.play(if (reachesGoal) CalSnapSoundEffect.WaterGoal else CalSnapSoundEffect.WaterAdd)
-                        viewModel.addWater(ml)
-                    },
-                    onUndo = {
-                        effects.sound.play(CalSnapSoundEffect.WaterUndo)
-                        viewModel.undoLastWater()
-                    },
-                )
-            }
-            AnimatedSection(5) { HeatmapCard(ui.days, ui.profile?.kcalGoal ?: 2000) }
-            AnimatedSection(6) {
+            AnimatedSection(4) { HeatmapCard(ui.days, ui.profile?.kcalGoal ?: 2000) }
+            AnimatedSection(5) {
                 WeightCard(
                     ui = ui,
                     onLogWeight = {
@@ -420,224 +389,6 @@ private fun StatCard(label: String, value: String, subtitle: String, modifier: M
         Spacer(Modifier.height(8.dp))
         Text(value, style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.4).sp, color = MaterialTheme.colorScheme.onSurface), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(subtitle, style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.36f)))
-    }
-}
-
-@Composable
-private fun WaterCard(
-    ui: ProgressViewModel.UiState,
-    onAdd: (Int) -> Unit,
-    onUndo: () -> Unit,
-) {
-    val progress = (ui.waterMl.toFloat() / ui.waterGoalMl.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
-    val waterDisplay by animateIntAsState(
-        targetValue = ui.waterMl,
-        animationSpec = tween(520, easing = ProgressEaseOut),
-        label = "progressWater",
-    )
-    ProgressCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        padding = PaddingValues(0.dp),
-        elevation = 12.dp,
-        borderColor = MacroWater.copy(alpha = 0.16f),
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(MacroWater.copy(alpha = 0.08f), Color.Transparent)))
-                    .padding(20.dp),
-            ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(Modifier.size(5.dp).clip(CircleShape).background(MacroWater))
-                            Text(
-                                stringResource(R.string.progress_water_balance).uppercase(Locale.getDefault()),
-                                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)),
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                waterDisplay.toString(),
-                                style = TextStyle(fontSize = 44.sp, fontWeight = FontWeight.Black, letterSpacing = (-3).sp, color = MaterialTheme.colorScheme.onSurface),
-                            )
-                            Text(
-                                stringResource(R.string.unit_ml),
-                                modifier = Modifier.padding(start = 4.dp, bottom = 7.dp),
-                                style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant),
-                            )
-                        }
-                        Text(
-                            "${stringResource(R.string.progress_water_of)} ${ui.waterGoalMl} ${stringResource(R.string.unit_ml)}",
-                            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.36f)),
-                        )
-                    }
-                    WaterRing(progress)
-                }
-                Spacer(Modifier.height(14.dp))
-                WaterWave(progress)
-            }
-            Column(Modifier.padding(horizontal = 18.dp)) {
-                ProgressDrinkButtons.chunked(3).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
-                        row.forEach { spec ->
-                            DrinkButton(spec = spec, onClick = { onAdd(spec.milliliters) }, modifier = Modifier.weight(1f))
-                        }
-                    }
-                    Spacer(Modifier.height(7.dp))
-                }
-                if (ui.waterHasSalt) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF59E0B).copy(alpha = 0.13f))
-                            .border(BorderStroke(0.5.dp, Color(0xFFB45309).copy(alpha = 0.20f)), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.progress_water_salt_hint, ui.waterGoalMl),
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB45309)),
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                }
-            }
-            WaterTimeline(events = ui.waterEvents, onUndo = onUndo)
-        }
-    }
-}
-
-@Composable
-private fun WaterRing(progress: Float) {
-    val animated by animateFloatAsState(targetValue = progress, animationSpec = tween(900, easing = ProgressEaseOut), label = "waterRing")
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
-        Canvas(Modifier.size(72.dp)) {
-            val stroke = 5.dp.toPx()
-            val ringSize = androidx.compose.ui.geometry.Size(size.width - stroke * 2, size.height - stroke * 2)
-            drawCircle(MacroWater.copy(alpha = 0.12f), radius = size.minDimension / 2f - stroke, style = Stroke(stroke, cap = StrokeCap.Round))
-            drawArc(
-                color = MacroWater,
-                startAngle = -90f,
-                sweepAngle = 360f * animated,
-                useCenter = false,
-                topLeft = Offset(stroke, stroke),
-                size = ringSize,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${(animated * 100).roundToInt()}%", style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Black, color = MacroWater))
-            Text(stringResource(R.string.progress_water_goal_word), style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.40f)))
-        }
-    }
-}
-
-@Composable
-private fun WaterWave(progress: Float) {
-    CalSnapProgressBar(
-        progress = progress,
-        color = if (progress >= 1f) Color(0xFF22C55E) else MacroWater,
-        track = MaterialTheme.colorScheme.onSurface.copy(alpha = if (MaterialTheme.colorScheme.background.luminance() < 0.25f) 0.10f else 0.06f),
-        height = 6.dp,
-    )
-}
-
-@Composable
-private fun DrinkButton(spec: DrinkButtonSpec, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .height(78.dp)
-            .calSnapClickable(pressedScale = 0.82f, sound = null, onClick = onClick)
-            .padding(horizontal = 5.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(spec.icon, style = TextStyle(fontSize = 20.sp))
-        Text(
-            stringResource(spec.labelRes),
-            style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text("+${spec.milliliters}", style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, color = MacroWater))
-    }
-}
-
-@Composable
-private fun WaterTimeline(events: List<ProgressViewModel.WaterEvent>, onUndo: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(0.5.dp)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 11.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.progress_water_history_today).uppercase(Locale.getDefault()),
-                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)),
-            )
-            if (events.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .calSnapClickable(pressedScale = 0.90f, sound = null, onClick = onUndo)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("↩", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MacroWater))
-                    Text(stringResource(R.string.progress_water_undo), style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MacroWater))
-                }
-            }
-        }
-        if (events.isEmpty()) {
-            Text(
-                stringResource(R.string.progress_water_empty),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 14.dp),
-                style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)),
-                textAlign = TextAlign.Center,
-            )
-        } else {
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                events.asReversed().take(8).forEach { event -> WaterEventChip(event) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WaterEventChip(event: ProgressViewModel.WaterEvent) {
-    Column(
-        modifier = Modifier
-            .widthIn(min = 58.dp)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text("💧", style = TextStyle(fontSize = 16.sp))
-        Text("${event.milliliters} ${stringResource(R.string.unit_ml)}", style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Black, color = MacroWater))
-        Text(formatTime(event.loggedAt), style = TextStyle(fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)))
     }
 }
 

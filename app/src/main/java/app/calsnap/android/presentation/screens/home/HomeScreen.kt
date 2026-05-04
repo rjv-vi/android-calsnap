@@ -144,8 +144,6 @@ fun HomeScreen(
                     carbsGoal = ui.profile?.carbsGoal ?: 250,
                     fatEaten = ui.totalFat,
                     fatGoal = ui.profile?.fatGoal ?: 60,
-                    waterMl = ui.waterMl,
-                    waterGoalMl = ui.waterGoalMl,
                 )
             }
             AnimatedSection(4) {
@@ -1122,8 +1120,6 @@ private fun CalorieHeroCard(
     carbsGoal: Int,
     fatEaten: Float,
     fatGoal: Int,
-    waterMl: Int,
-    waterGoalMl: Int,
 ) {
     val remaining = goal - eaten
     val eatenDisplay by animateIntAsState(
@@ -1230,7 +1226,6 @@ private fun CalorieHeroCard(
                 MacroMiniTile(stringResource(R.string.macro_carbs), carbsEaten, carbsGoal.toFloat(), macroCarbsColor(), Modifier.weight(1f))
                 MacroMiniTile(stringResource(R.string.macro_fat), fatEaten, fatGoal.toFloat(), macroFatColor(), Modifier.weight(1f))
             }
-            WaterStrip(waterMl = waterMl, goalMl = waterGoalMl)
         }
     }
 }
@@ -1272,42 +1267,6 @@ private fun MacroMiniTile(label: String, value: Float, goal: Float, color: Color
                 letterSpacing = 0.5.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = homeT1Alpha()),
             ),
-        )
-    }
-}
-
-@Composable
-private fun WaterStrip(waterMl: Int, goalMl: Int) {
-    val waterDisplay by animateIntAsState(
-        targetValue = waterMl,
-        animationSpec = tween(500, easing = HomeEaseOut),
-        label = "homeWaterInline",
-    )
-    val water = Color(0xFF3B82F6)
-    Row(
-        modifier = Modifier
-            .padding(top = 12.dp)
-            .fillMaxWidth()
-            .calSnapClickable(pressedScale = 0.98f, onClick = {})
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text("💧", style = TextStyle(fontSize = 13.sp))
-        HomeLinearProgress(
-            progress = waterMl.toFloat() / goalMl.coerceAtLeast(1).toFloat(),
-            color = water,
-            height = 5.dp,
-            trackColor = water.copy(alpha = 0.15f),
-            startColor = Color(0xFF60A5FA),
-            animationDurationMillis = 500,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            "$waterDisplay / $goalMl ${stringResource(R.string.unit_ml)}",
-            color = water,
-            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-            maxLines = 1,
         )
     }
 }

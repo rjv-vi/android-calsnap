@@ -37,13 +37,16 @@ class SettingsViewModel @Inject constructor(
         val hapticOn: Boolean = true,
         val profile: UserProfile? = null,
         val hasGeminiKey: Boolean = false,
-        val selectedModel: String = "gemini-2.0-flash-lite",
+        val selectedModel: String = "gemini-flash-lite-latest",
         val models: List<GeminiClient.GeminiModelInfo> = emptyList(),
         val modelsLoading: Boolean = false,
         val modelsError: String? = null,
         val exportLoading: Boolean = false,
         val exportPayload: ExportPayload? = null,
         val exportError: String? = null,
+        val importLoading: Boolean = false,
+        val importError: String? = null,
+        val importDone: Boolean = false,
     )
 
     private val _ui = MutableStateFlow(UiState(hasGeminiKey = safeHasGeminiKey()))
@@ -109,6 +112,15 @@ class SettingsViewModel @Inject constructor(
     fun prepareJsonExport() = prepareExport("json")
     fun prepareCsvExport() = prepareExport("csv")
     fun consumeExport() = _ui.update { it.copy(exportPayload = null) }
+    fun consumeImportResult() = _ui.update { it.copy(importError = null, importDone = false) }
+    fun importJson(content: String) {
+        _ui.update { it.copy(importLoading = true, importError = null, importDone = false) }
+        viewModelScope.launch {
+            runCatching { dataExportRepository.importJsonString(content) }
+                .onSuccess { _ui.update { it.copy(importLoading = false, importDone = true, hasGeminiKey = safeHasGeminiKey()) } }
+                .onFailure { error -> _ui.update { it.copy(importLoading = false, importError = error.message) } }
+        }
+    }
     fun resetAllData() = viewModelScope.launch { dataExportRepository.resetAll() }
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)

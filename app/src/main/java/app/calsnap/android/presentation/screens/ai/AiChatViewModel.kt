@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.repository.FoodLogRepository
 import app.calsnap.android.data.repository.UserRepository
-import app.calsnap.android.data.repository.WaterRepository
 import app.calsnap.android.data.remote.GeminiClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +21,6 @@ class AiChatViewModel @Inject constructor(
     private val keyStore: SecureKeyStore,
     private val userRepository: UserRepository,
     private val foodLogRepository: FoodLogRepository,
-    private val waterRepository: WaterRepository,
 ) : ViewModel() {
 
     data class ChatMessage(val text: String, val fromUser: Boolean)
@@ -38,7 +36,7 @@ class AiChatViewModel @Inject constructor(
     private val _ui = MutableStateFlow(
         UiState(
             hasApiKey = safeHasGeminiKey(),
-            messages = listOf(ChatMessage("Привет! Я помогу разобрать питание, воду и цели на сегодня.", false)),
+            messages = listOf(ChatMessage("Привет! Я помогу разобрать питание и цели на сегодня.", false)),
         ),
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -60,14 +58,13 @@ class AiChatViewModel @Inject constructor(
             runCatching {
                 val profile = userRepository.profile.first()
                 val entries = foodLogRepository.observeToday().first()
-                val water = waterRepository.observeToday().first().sumOf { it.milliliters }
                 val food = entries.joinToString("; ") { "${it.foodName} ${it.calories} ккал" }.ifBlank { "пока нет записей" }
                 val system = buildString {
                     append("Ты русскоязычный AI-нутрициолог CalSnap. ")
                     append("Отвечай коротко, дружелюбно и практично. ")
                     append("Профиль: ${profile?.name ?: "пользователь"}, цель ${profile?.kcalGoal ?: 2000} ккал, ")
                     append("белки ${profile?.proteinGoal ?: 100}г, углеводы ${profile?.carbsGoal ?: 250}г, жиры ${profile?.fatGoal ?: 60}г. ")
-                    append("Сегодня: $food. Вода: ${water}мл.")
+                    append("Сегодня: $food.")
                 }
                 gemini.generateTextWithFallback(
                     prompt = text,

@@ -64,11 +64,7 @@ class AddFoodViewModel @Inject constructor(
         _ui.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             runCatching {
-                gemini.generateJson(
-                    serializer = FoodAnalysisResult.serializer(),
-                    prompt = "Описание пользователя: \"$text\". Оцени одну реалистичную порцию, калории и БЖУ. Верни только JSON.",
-                    systemInstruction = "Ты русскоязычный нутрициолог CalSnap. JSON-схема: {\"food\":\"string\",\"portion\":\"string\",\"calories\":0,\"protein\":0,\"fat\":0,\"carbs\":0,\"description\":\"string\",\"ingredients\":[\"string\"]}. Не добавляй markdown.",
-                )
+                gemini.analyzeFoodText(text)
             }.onSuccess { r ->
                 _ui.update { it.copy(loading = false, result = r, resultSource = FoodLogEntity.Source.TEXT_AI) }
             }.onFailure { t ->

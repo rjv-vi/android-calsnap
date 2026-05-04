@@ -1,5 +1,7 @@
 package app.calsnap.android.presentation.screens.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import app.calsnap.android.R
 import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.remote.GeminiClient
@@ -84,6 +87,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val toast = LocalCalSnapToastHost.current
     val effects = LocalCalSnapEffects.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        toast.show(
+            context.getString(
+                if (granted) R.string.settings_notifications_enabled
+                else R.string.settings_notifications_permission_needed,
+            ),
+        )
+    }
     val jsonLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val payload = ui.exportPayload
         if (uri != null && payload != null) {
@@ -104,6 +115,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
         viewModel.consumeExport()
     }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }.onSuccess(viewModel::importJson)
+                .onFailure { toast.show(it.message ?: context.getString(R.string.settings_import_failed)) }
+        }
+    }
 
     LaunchedEffect(ui.exportPayload) {
         val payload = ui.exportPayload ?: return@LaunchedEffect
@@ -112,6 +131,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     }
     LaunchedEffect(ui.exportError) {
         ui.exportError?.let { toast.show(it) }
+    }
+    LaunchedEffect(ui.importError, ui.importDone) {
+        ui.importError?.let { toast.show(it) }
+        if (ui.importDone) toast.show(context.getString(R.string.settings_import_done))
+        if (ui.importError != null || ui.importDone) viewModel.consumeImportResult()
     }
 
     CalSnapScreen(glow = false) {
@@ -166,15 +190,25 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 }
                 AnimatedSection(4) {
                     SettingsSection(label = stringResource(R.string.settings_section_notifications)) {
-                        NotificationsCard()
+                        NotificationsCard(
+                            onOpen = {
+                                effects.sound.play(CalSnapSoundEffect.NotificationSave)
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                                    toast.show(context.getString(R.string.settings_notifications_enabled))
+                                } else {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            },
+                        )
                     }
                 }
                 AnimatedSection(5) {
                     SettingsSection(label = stringResource(R.string.settings_section_data)) {
                         DataCard(
-                            loading = ui.exportLoading,
+                            loading = ui.exportLoading || ui.importLoading,
                             onExportCsv = viewModel::prepareCsvExport,
                             onExportJson = viewModel::prepareJsonExport,
+                            onImportJson = { importLauncher.launch(arrayOf("application/json", "text/json", "text/*")) },
                             onReset = { resetConfirm = true },
                         )
                     }
@@ -406,7 +440,7 @@ private fun ApiCard(
 }
 
 @Composable
-private fun NotificationsCard() {
+private fun NotificationsCard(onOpen: () -> Unit) {
     SettingsGroupCard {
         SettingsValueRow(
             icon = "🔔",
@@ -414,6 +448,7 @@ private fun NotificationsCard() {
             title = stringResource(R.string.settings_reminders),
             subtitle = stringResource(R.string.settings_reminders_sub),
             value = "›",
+            onClick = onOpen,
         )
     }
 }
@@ -444,6 +479,7 @@ private fun DataCard(
     loading: Boolean,
     onExportCsv: () -> Unit,
     onExportJson: () -> Unit,
+    onImportJson: () -> Unit,
     onReset: () -> Unit,
 ) {
     SettingsGroupCard {
@@ -465,6 +501,8 @@ private fun DataCard(
             icon = "⇧",
             title = stringResource(R.string.settings_import_json),
             color = Color(0xFF22C55E),
+            value = if (loading) "…" else null,
+            onClick = onImportJson,
         )
         SettingsValueRow(
             icon = "🗑️",

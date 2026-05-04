@@ -8,7 +8,6 @@ import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.repository.FoodLogRepository
 import app.calsnap.android.data.repository.UserRepository
-import app.calsnap.android.data.repository.WaterRepository
 import app.calsnap.android.domain.FavouriteFood
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,7 +31,6 @@ import kotlin.math.roundToInt
 class HomeViewModel @Inject constructor(
     userRepository: UserRepository,
     private val logRepository: FoodLogRepository,
-    waterRepository: WaterRepository,
     private val keyStore: SecureKeyStore,
 ) : ViewModel() {
 
@@ -45,8 +43,6 @@ class HomeViewModel @Inject constructor(
         val totalProtein: Float = 0f,
         val totalCarbs: Float = 0f,
         val totalFat: Float = 0f,
-        val waterMl: Int = 0,
-        val waterGoalMl: Int = 2000,
         val hasApiKey: Boolean = true,
     )
 
@@ -71,11 +67,9 @@ class HomeViewModel @Inject constructor(
     val ui: StateFlow<UiState> = combine(
         userRepository.profile.catch { emit(null) },
         selectedEntries,
-        waterRepository.observeToday().catch { emit(emptyList()) },
         logRepository.observeLastDays(14).catch { emit(emptyList()) },
         selectedDayAndApiKey,
-    ) { profile, entries, water, lastDays, selected ->
-        val waterGoal = ((profile?.weightKg ?: 70f) * 35f).toInt().coerceIn(1500, 3500)
+    ) { profile, entries, lastDays, selected ->
         val today = LocalDate.now()
         val grouped = lastDays.mapNotNull { entry ->
             entry.localDateOrNull()?.let { date -> date to entry }
@@ -93,8 +87,6 @@ class HomeViewModel @Inject constructor(
             totalProtein  = entries.fold(0f) { acc, e -> acc + e.protein },
             totalCarbs    = entries.fold(0f) { acc, e -> acc + e.carbs },
             totalFat      = entries.fold(0f) { acc, e -> acc + e.fat },
-            waterMl       = water.sumOf { it.milliliters },
-            waterGoalMl   = waterGoal,
             hasApiKey     = safeHasGeminiKey(),
         )
     }.catch {

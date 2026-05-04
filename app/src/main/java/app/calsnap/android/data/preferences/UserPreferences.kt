@@ -118,7 +118,7 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         data.map { it[Keys.HAPTIC_ON] ?: true }
 
     val geminiModel: Flow<String> =
-        data.map { it[Keys.GEMINI_MODEL] ?: "gemini-2.0-flash-lite" }
+        data.map { it[Keys.GEMINI_MODEL] ?: "gemini-flash-lite-latest" }
 
     suspend fun seedAppearanceIfMissing(darkTheme: Boolean, language: String) = context.prefsDataStore.edit {
         if (!it.contains(Keys.DARK_THEME)) it[Keys.DARK_THEME] = darkTheme

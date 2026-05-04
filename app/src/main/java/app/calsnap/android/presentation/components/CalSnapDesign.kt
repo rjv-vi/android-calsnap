@@ -619,7 +619,6 @@ fun CalSnapWheelPicker(
     LaunchedEffect(centerIndex, items.size) {
         if (centerIndex != selectedIndex) {
             effects.haptic.play(CalSnapHapticEffect.Tick)
-            effects.sound.play(CalSnapSoundEffect.DrumTick)
             onSelect(centerIndex)
         }
     }
@@ -677,21 +676,25 @@ fun CalSnapWheelPicker(
                 val normalizedDist = (distancePx / itemHeightPx.coerceAtLeast(1f)).coerceIn(0f, 2.5f)
 
                 fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
-                val alpha = lerp(1f, 0.18f, (normalizedDist / 2.5f).coerceIn(0f, 1f))
-                val fontSizeSp = lerp(21f, 18f, (normalizedDist / 1.2f).coerceIn(0f, 1f))
+                val alpha = lerp(1f, 0.22f, (normalizedDist / 2.5f).coerceIn(0f, 1f))
+                val scale = lerp(1f, 0.86f, (normalizedDist / 1.35f).coerceIn(0f, 1f))
                 val isBold = normalizedDist < 0.5f
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(itemHeight)
-                        .graphicsLayer { this.alpha = alpha },
+                        .graphicsLayer {
+                            this.alpha = alpha
+                            scaleX = scale
+                            scaleY = scale
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text,
                         style = TextStyle(
-                            fontSize = fontSizeSp.sp,
+                            fontSize = 21.sp,
                             fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
                             letterSpacing = if (isBold) (-0.3).sp else 0.sp,

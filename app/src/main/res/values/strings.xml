@@ -105,6 +105,7 @@
     <string name="add_pick_photo">Галерея</string>
     <string name="add_photo_camera_selected">Фото с камеры</string>
     <string name="add_camera_failed">Не удалось открыть камеру</string>
+    <string name="add_camera_permission_needed">Разреши доступ к камере, чтобы сделать фото</string>
     <string name="add_change_photo">Изменить</string>
     <string name="add_analyze_photo">Анализировать</string>
     <string name="add_barcode_hint">Штрихкод с упаковки</string>
@@ -211,6 +212,8 @@
     <string name="settings_reset_all">Сбросить все данные</string>
     <string name="settings_reminders">Напоминания</string>
     <string name="settings_reminders_sub">Настрой время напоминаний</string>
+    <string name="settings_notifications_permission_needed">Разреши уведомления, чтобы включить напоминания</string>
+    <string name="settings_notifications_enabled">Уведомления включены</string>
     <string name="settings_widgets">Виджеты</string>
     <string name="settings_widgets_sub">Добавить на рабочий стол</string>
     <string name="settings_authors">Авторы CalSnap</string>
@@ -219,6 +222,8 @@
     <string name="settings_reset_action">Сбросить</string>
     <string name="settings_reset_done">Данные сброшены</string>
     <string name="settings_export_done">Экспорт сохранён</string>
+    <string name="settings_import_done">Импорт завершён</string>
+    <string name="settings_import_failed">Не удалось импортировать файл</string>
     <string name="settings_footer_v">CalSnap Android · бета 1.0.0</string>
 
     <string name="progress_title">Прогресс</string>
