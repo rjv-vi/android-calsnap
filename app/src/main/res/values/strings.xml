@@ -175,8 +175,14 @@
     <string name="settings_section_ai">AI</string>
     <string name="settings_section_appearance">Внешний вид</string>
     <string name="settings_section_profile">Профиль</string>
+    <string name="settings_section_nutrition">Питание</string>
+    <string name="settings_section_api">API</string>
+    <string name="settings_section_notifications">Уведомления</string>
     <string name="settings_section_data">Данные</string>
+    <string name="settings_section_about">О приложении</string>
+    <string name="settings_api_key">Gemini API ключ</string>
     <string name="settings_api_set">API ключ установлен ✓</string>
+    <string name="settings_api_set_short">Установлен ✓</string>
     <string name="settings_api_not_set">API ключ не установлен</string>
     <string name="settings_api_hint">Gemini API ключ (AIza…)</string>
     <string name="settings_api_save">Сохранить ключ</string>
@@ -201,6 +207,11 @@
     <string name="settings_import_json">Импорт данных (JSON)</string>
     <string name="settings_import_json_sub">Следующий шаг M2</string>
     <string name="settings_reset_all">Сбросить все данные</string>
+    <string name="settings_reminders">Напоминания</string>
+    <string name="settings_reminders_sub">Настрой время напоминаний</string>
+    <string name="settings_widgets">Виджеты</string>
+    <string name="settings_widgets_sub">Добавить на рабочий стол</string>
+    <string name="settings_authors">Авторы CalSnap</string>
     <string name="settings_reset_title">Сбросить все данные?</string>
     <string name="settings_reset_body">Профиль, дневник, вода, вес, любимые блюда и API ключ будут удалены с устройства.</string>
     <string name="settings_reset_action">Сбросить</string>
@@ -263,7 +274,7 @@
     <string name="progress_weight_input">Новый вес</string>
     <string name="progress_save">Сохранить</string>
 
-    <string name="ai_title">AI-нутрициолог</string>
+    <string name="ai_title">AI Нутрициолог</string>
     <string name="ai_subtitle">Учитывает дневник, воду и твою цель</string>
     <string name="ai_online">Онлайн</string>
     <string name="ai_input_hint">Спроси что-нибудь…</string>

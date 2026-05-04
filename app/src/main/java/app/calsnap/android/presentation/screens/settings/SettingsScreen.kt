@@ -2,11 +2,14 @@ package app.calsnap.android.presentation.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,7 +17,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,7 +28,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -35,7 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +77,8 @@ import app.calsnap.android.ui.theme.CalSnapStreak
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var profileSheet by remember { mutableStateOf<ProfileSheet?>(null) }
+    var apiKeySheet by remember { mutableStateOf(false) }
+    var modelSheet by remember { mutableStateOf(false) }
     var resetConfirm by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val toast = LocalCalSnapToastHost.current
@@ -105,82 +113,78 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         ui.exportError?.let { toast.show(it) }
     }
 
-    CalSnapScreen {
+    CalSnapScreen(glow = false) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .fillMaxSize(),
         ) {
-            AnimatedSection(0) { SettingsHeader() }
-            AnimatedSection(1) {
-                SectionLabel(stringResource(R.string.settings_section_ai))
-                ApiKeyCard(
-                    hasKey = ui.hasGeminiKey,
-                    onSave = viewModel::saveGeminiKey,
-                    onClear = viewModel::clearGeminiKey,
-                )
+            SettingsHeader()
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                AnimatedSection(0) {
+                    SettingsSection(label = stringResource(R.string.settings_section_appearance)) {
+                        AppearanceCard(
+                            darkTheme = ui.darkTheme,
+                            soundOn = ui.soundOn,
+                            hapticOn = ui.hapticOn,
+                            language = ui.language,
+                            onTheme = viewModel::setDarkTheme,
+                            onSound = viewModel::setSoundOn,
+                            onHaptic = viewModel::setHapticOn,
+                            onLanguage = viewModel::setLanguage,
+                        )
+                    }
+                }
+                AnimatedSection(1) {
+                    SettingsSection(label = stringResource(R.string.settings_section_profile)) {
+                        ProfileCard(profile = ui.profile, onEdit = { profileSheet = it })
+                    }
+                }
+                AnimatedSection(2) {
+                    SettingsSection(label = stringResource(R.string.settings_section_nutrition)) {
+                        NutritionCard(profile = ui.profile, onEdit = { profileSheet = it })
+                    }
+                }
+                AnimatedSection(3) {
+                    SettingsSection(label = stringResource(R.string.settings_section_api)) {
+                        ApiCard(
+                            hasKey = ui.hasGeminiKey,
+                            selectedModel = ui.selectedModel,
+                            onApi = { apiKeySheet = true },
+                            onModel = {
+                                modelSheet = true
+                                viewModel.loadGeminiModels()
+                            },
+                        )
+                    }
+                }
+                AnimatedSection(4) {
+                    SettingsSection(label = stringResource(R.string.settings_section_notifications)) {
+                        NotificationsCard()
+                    }
+                }
+                AnimatedSection(5) {
+                    SettingsSection(label = stringResource(R.string.settings_section_data)) {
+                        DataCard(
+                            loading = ui.exportLoading,
+                            onExportCsv = viewModel::prepareCsvExport,
+                            onExportJson = viewModel::prepareJsonExport,
+                            onReset = { resetConfirm = true },
+                        )
+                    }
+                }
+                AnimatedSection(6) {
+                    SettingsSection(label = stringResource(R.string.settings_section_about)) {
+                        AboutCard()
+                    }
+                }
+                Spacer(Modifier.height(96.dp))
             }
-            AnimatedSection(2) {
-                ModelCard(
-                    hasKey = ui.hasGeminiKey,
-                    selectedModel = ui.selectedModel,
-                    models = ui.models,
-                    loading = ui.modelsLoading,
-                    error = ui.modelsError,
-                    onLoad = viewModel::loadGeminiModels,
-                    onSelect = viewModel::selectGeminiModel,
-                )
-            }
-            AnimatedSection(3) {
-                SectionLabel(stringResource(R.string.settings_section_appearance))
-                ThemeRow(
-                    darkTheme = ui.darkTheme,
-                    onChange = viewModel::setDarkTheme,
-                )
-                Spacer(Modifier.height(10.dp))
-                LanguageRow(
-                    current = ui.language,
-                    onChange = viewModel::setLanguage,
-                )
-                Spacer(Modifier.height(10.dp))
-                ToggleSettingRow(
-                    icon = "🔊",
-                    title = stringResource(R.string.settings_sounds),
-                    subtitle = stringResource(R.string.settings_sounds_sub),
-                    checked = ui.soundOn,
-                    onChange = viewModel::setSoundOn,
-                )
-                Spacer(Modifier.height(10.dp))
-                ToggleSettingRow(
-                    icon = "📳",
-                    title = stringResource(R.string.settings_haptics),
-                    subtitle = stringResource(R.string.settings_haptics_sub),
-                    checked = ui.hapticOn,
-                    onChange = viewModel::setHapticOn,
-                )
-            }
-            AnimatedSection(4) {
-                SectionLabel(stringResource(R.string.settings_section_profile))
-                ProfileCard(profile = ui.profile, onEdit = { profileSheet = it })
-            }
-            AnimatedSection(5) {
-                SectionLabel(stringResource(R.string.settings_section_data))
-                DataCard(
-                    loading = ui.exportLoading,
-                    onExportCsv = viewModel::prepareCsvExport,
-                    onExportJson = viewModel::prepareJsonExport,
-                    onReset = { resetConfirm = true },
-                )
-            }
-            Text(
-                text = stringResource(R.string.settings_footer_v),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-            )
-            Spacer(Modifier.height(24.dp))
         }
     }
     val profile = ui.profile
@@ -199,6 +203,57 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 onDismiss = { profileSheet = null },
                 onUpdate = viewModel::updateProfile,
             )
+        }
+    }
+    if (apiKeySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { apiKeySheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(stringResource(R.string.settings_api_key), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                ApiKeyCard(
+                    hasKey = ui.hasGeminiKey,
+                    onSave = viewModel::saveGeminiKey,
+                    onClear = viewModel::clearGeminiKey,
+                )
+                Spacer(Modifier.height(18.dp))
+            }
+        }
+    }
+    if (modelSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { modelSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                ModelCard(
+                    hasKey = ui.hasGeminiKey,
+                    selectedModel = ui.selectedModel,
+                    models = ui.models,
+                    loading = ui.modelsLoading,
+                    error = ui.modelsError,
+                    onLoad = viewModel::loadGeminiModels,
+                    onSelect = viewModel::selectGeminiModel,
+                )
+                Spacer(Modifier.height(18.dp))
+            }
         }
     }
     CalSnapConfirmDialog(
@@ -222,9 +277,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
 @Composable
 private fun ProfileCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
-    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(0.dp), elevation = 14.dp) {
+    SettingsGroupCard {
         SettingsValueRow(
             icon = "Aa",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB))),
             title = stringResource(R.string.settings_profile_name),
             value = profile?.name?.takeIf { it.isNotBlank() } ?: "—",
             onClick = { onEdit(ProfileSheet.NAME) },
@@ -232,20 +288,28 @@ private fun ProfileCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
         SettingsDivider()
         SettingsValueRow(
             icon = "cm",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF4ADE80), Color(0xFF16A34A))),
             title = stringResource(R.string.settings_profile_params),
-            value = profile?.let { "${BmrCalculator.ageFromDob(it.dob)} · ${it.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${it.weightKg.toInt()} ${stringResource(R.string.unit_kg)}" } ?: "—",
+            value = "›",
             onClick = { onEdit(ProfileSheet.PARAMS) },
         )
         SettingsDivider()
         SettingsValueRow(
             icon = "🎯",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFFF9040), Color(0xFFFF4500))),
             title = stringResource(R.string.settings_profile_goal),
             value = profile?.goalLabel() ?: "—",
             onClick = { onEdit(ProfileSheet.GOAL) },
         )
-        SettingsDivider()
+    }
+}
+
+@Composable
+private fun NutritionCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
+    SettingsGroupCard {
         SettingsValueRow(
             icon = "🔥",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFF87171), Color(0xFFDC2626))),
             title = stringResource(R.string.settings_profile_kcal),
             subtitle = stringResource(R.string.settings_profile_kcal_sub),
             value = profile?.let { "${it.kcalGoal} ${stringResource(R.string.unit_kcal)}" } ?: "—",
@@ -254,10 +318,122 @@ private fun ProfileCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
         SettingsDivider()
         SettingsValueRow(
             icon = "🥗",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF34D399), Color(0xFF059669))),
             title = stringResource(R.string.settings_profile_prefs),
             subtitle = profile?.prefsSummary() ?: stringResource(R.string.settings_profile_no_prefs),
             value = "›",
             onClick = { onEdit(ProfileSheet.PREFS) },
+        )
+    }
+}
+
+@Composable
+private fun AppearanceCard(
+    darkTheme: Boolean?,
+    soundOn: Boolean,
+    hapticOn: Boolean,
+    language: String,
+    onTheme: (Boolean?) -> Unit,
+    onSound: (Boolean) -> Unit,
+    onHaptic: (Boolean) -> Unit,
+    onLanguage: (String) -> Unit,
+) {
+    SettingsGroupCard {
+        ToggleValueRow(
+            icon = "🌙",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569))),
+            title = stringResource(R.string.settings_dark_theme),
+            checked = darkTheme == true,
+            onChange = { onTheme(if (it) true else null) },
+        )
+        SettingsDivider()
+        ToggleValueRow(
+            icon = "🔊",
+            iconBrush = Brush.linearGradient(listOf(CalSnapStreak, Color(0xFFFF7A1A))),
+            title = stringResource(R.string.settings_sounds),
+            subtitle = stringResource(R.string.settings_sounds_sub),
+            checked = soundOn,
+            onChange = onSound,
+        )
+        SettingsDivider()
+        ToggleValueRow(
+            icon = "📳",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFA78BFA), Color(0xFF7C3AED))),
+            title = stringResource(R.string.settings_haptics),
+            subtitle = stringResource(R.string.settings_haptics_sub),
+            checked = hapticOn,
+            onChange = onHaptic,
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🌐",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF1E40AF))),
+            title = stringResource(R.string.settings_language),
+            subtitle = "Russian / English",
+            value = language.uppercase(),
+            onClick = { onLanguage(if (language == "ru") "en" else "ru") },
+        )
+    }
+}
+
+@Composable
+private fun ApiCard(
+    hasKey: Boolean,
+    selectedModel: String,
+    onApi: () -> Unit,
+    onModel: () -> Unit,
+) {
+    SettingsGroupCard {
+        SettingsValueRow(
+            icon = "🔑",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+            title = stringResource(R.string.settings_api_key),
+            subtitle = stringResource(if (hasKey) R.string.settings_api_set_short else R.string.settings_api_not_set),
+            value = "›",
+            onClick = onApi,
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🧠",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFC084FC), Color(0xFF9333EA))),
+            title = stringResource(R.string.settings_model_title),
+            subtitle = selectedModel,
+            value = "›",
+            onClick = onModel,
+        )
+    }
+}
+
+@Composable
+private fun NotificationsCard() {
+    SettingsGroupCard {
+        SettingsValueRow(
+            icon = "🔔",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))),
+            title = stringResource(R.string.settings_reminders),
+            subtitle = stringResource(R.string.settings_reminders_sub),
+            value = "›",
+        )
+    }
+}
+
+@Composable
+private fun AboutCard() {
+    SettingsGroupCard {
+        SettingsValueRow(
+            icon = "📊",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))),
+            title = stringResource(R.string.settings_widgets),
+            subtitle = stringResource(R.string.settings_widgets_sub),
+            value = "›",
+        )
+        SettingsDivider()
+        SettingsValueRow(
+            icon = "🍎",
+            iconBrush = Brush.linearGradient(listOf(CalSnapStreak, Color(0xFFFF9A3C))),
+            title = stringResource(R.string.settings_authors),
+            subtitle = "RJV · Rizan",
+            value = "›",
         )
     }
 }
@@ -269,31 +445,31 @@ private fun DataCard(
     onExportJson: () -> Unit,
     onReset: () -> Unit,
 ) {
-    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(0.dp), elevation = 14.dp) {
-        SettingsValueRow(
-            icon = "📊",
+    SettingsGroupCard {
+        DataActionRow(
+            icon = "⊞",
             title = stringResource(R.string.settings_export_csv),
-            value = if (loading) "…" else "›",
+            color = Color(0xFF22C55E),
+            value = if (loading) "…" else null,
             onClick = onExportCsv,
         )
-        SettingsDivider()
-        SettingsValueRow(
-            icon = "⬇️",
+        DataActionRow(
+            icon = "⇩",
             title = stringResource(R.string.settings_export_json),
-            value = if (loading) "…" else "›",
+            color = Color(0xFF3B82F6),
+            value = if (loading) "…" else null,
             onClick = onExportJson,
         )
-        SettingsDivider()
-        SettingsValueRow(
-            icon = "⬆️",
+        DataActionRow(
+            icon = "⇧",
             title = stringResource(R.string.settings_import_json),
-            subtitle = stringResource(R.string.settings_import_json_sub),
-            value = "›",
+            color = Color(0xFF22C55E),
         )
-        SettingsDivider()
         SettingsValueRow(
             icon = "🗑️",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFFF87171), Color(0xFFDC2626))),
             title = stringResource(R.string.settings_reset_all),
+            titleColor = Color(0xFFFF4D5A),
             value = "",
             onClick = onReset,
         )
@@ -542,31 +718,60 @@ private fun SaveSheetButton(onClick: () -> Unit) {
 
 @Composable
 private fun SettingsHeader() {
-    CalSnapCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        padding = PaddingValues(16.dp),
-        containerBrush = Brush.verticalGradient(listOf(CalSnapStreak.copy(alpha = 0.13f), MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))),
-        borderColor = CalSnapStreak.copy(alpha = 0.18f),
-        elevation = 18.dp,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CalSnapIconTile(icon = "⚙️", size = 54.dp, background = CalSnapStreak.copy(alpha = 0.11f))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                Text(stringResource(R.string.settings_footer_v), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            }
-        }
+        Text(
+            text = stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 16.dp),
+        )
+        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f), thickness = 0.5.dp)
     }
 }
 
-@Composable private fun SectionLabel(text: String) {
+@Composable
+private fun SettingsSection(label: String, content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 14.dp),
+    ) {
+        SectionLabel(label)
+        content()
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
     Text(
         text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.Black,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        modifier = Modifier.padding(start = 10.dp, bottom = 8.dp),
+    )
+}
+
+@Composable
+private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
+    CalSnapCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        padding = PaddingValues(0.dp),
+        containerBrush = Brush.verticalGradient(
+            listOf(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            ),
+        ),
+        borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
+        elevation = 12.dp,
+        content = content,
     )
 }
 
@@ -698,7 +903,7 @@ private fun ToggleSettingRow(
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(checked = checked, onCheckedChange = onChange)
+            SettingsToggle(checked = checked)
         }
     }
 }
@@ -707,13 +912,17 @@ private fun ToggleSettingRow(
 private fun SettingsValueRow(
     icon: String,
     title: String,
-    value: String,
+    value: String? = null,
     subtitle: String? = null,
+    iconBrush: Brush = Brush.linearGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569))),
+    iconTextColor: Color = Color.White,
+    titleColor: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 60.dp)
             .then(
                 if (onClick != null) {
                     Modifier.calSnapClickable(
@@ -723,36 +932,134 @@ private fun SettingsValueRow(
                     )
                 } else Modifier,
             )
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = 12.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CalSnapIconTile(
+        SettingsIconTile(
             icon = icon,
-            size = 44.dp,
-            background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
+            brush = iconBrush,
+            textColor = iconTextColor,
         )
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = titleColor ?: MaterialTheme.colorScheme.onSurface)
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        value?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToggleValueRow(
+    icon: String,
+    iconBrush: Brush,
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .calSnapClickable(
+                pressedScale = 0.989f,
+                sound = CalSnapSoundEffect.Toggle,
+                haptic = CalSnapHapticEffect.Tick,
+                onClick = { onChange(!checked) },
+            )
+            .padding(horizontal = 12.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SettingsIconTile(icon = icon, brush = iconBrush)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            subtitle?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        SettingsToggle(checked = checked)
+    }
+}
+
+@Composable
+private fun SettingsToggle(checked: Boolean) {
+    Box(
+        modifier = Modifier
+            .size(width = 51.dp, height = 31.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (checked) Color(0xFF22C55E) else MaterialTheme.colorScheme.surfaceVariant)
+            .border(BorderStroke(1.dp, if (checked) Color(0xFF16A34A) else MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)), RoundedCornerShape(16.dp)),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = if (checked) 23.dp else 3.dp)
+                .size(25.dp)
+                .shadow(4.dp, CircleShape, clip = false)
+                .clip(CircleShape)
+                .background(Color.White),
         )
+    }
+}
+
+@Composable
+private fun SettingsIconTile(
+    icon: String,
+    brush: Brush,
+    textColor: Color = Color.White,
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .shadow(6.dp, RoundedCornerShape(10.dp), clip = false)
+            .clip(RoundedCornerShape(10.dp))
+            .background(brush),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(icon, color = textColor, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun DataActionRow(
+    icon: String,
+    title: String,
+    color: Color,
+    value: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 61.dp)
+            .then(if (onClick != null) Modifier.calSnapClickable(pressedScale = 0.97f, onClick = onClick) else Modifier)
+            .padding(horizontal = 22.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text(icon, color = color, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        Text(title, modifier = Modifier.weight(1f), color = color, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        value?.let { Text(it, color = color, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Black) }
     }
 }
 
 @Composable
 private fun SettingsDivider() {
     Divider(
-        modifier = Modifier.padding(start = 72.dp),
+        modifier = Modifier.padding(start = 58.dp),
         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
         thickness = 0.5.dp,
     )
@@ -818,7 +1125,7 @@ private fun ThemeRow(darkTheme: Boolean?, onChange: (Boolean?) -> Unit) {
                 Text(stringResource(R.string.settings_dark_theme), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 Text(if (darkTheme == true) "Dark" else "System / Light", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(checked = darkTheme == true, onCheckedChange = { on -> onChange(if (on) true else null) })
+            SettingsToggle(checked = darkTheme == true)
         }
     }
 }

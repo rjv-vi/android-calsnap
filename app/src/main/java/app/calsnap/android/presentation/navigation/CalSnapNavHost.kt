@@ -147,7 +147,15 @@ private fun CalSnapGraph(
             AddFoodScreen(onDismiss = { navController.popBackStack() })
         }
         composable(Screen.Ai.route) {
-            AiChatScreen()
+            AiChatScreen(
+                onBack = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+            )
         }
         composable(Screen.Settings.route) {
             SettingsScreen()

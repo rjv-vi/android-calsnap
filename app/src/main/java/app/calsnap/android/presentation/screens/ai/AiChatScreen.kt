@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,33 +46,32 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.calsnap.android.R
-import app.calsnap.android.presentation.components.AnimatedSection
 import app.calsnap.android.presentation.components.CalSnapCard
-import app.calsnap.android.presentation.components.CalSnapPill
 import app.calsnap.android.presentation.components.CalSnapScreen
 import app.calsnap.android.presentation.components.calSnapClickable
 import app.calsnap.android.ui.theme.CalSnapStreak
 
 @Composable
 fun AiChatScreen(
+    onBack: () -> Unit,
     viewModel: AiChatViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.refreshKeyState() }
 
-    CalSnapScreen {
+    CalSnapScreen(glow = false) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .fillMaxSize(),
         ) {
-            AnimatedSection(0) { AiHeader() }
-            if (!ui.hasApiKey) AnimatedSection(1) { ApiMissing() }
+            AiHeader(onBack = onBack)
             QuickPrompts(enabled = ui.hasApiKey && !ui.loading, onPrompt = viewModel::updateInput)
             LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 itemsIndexed(ui.messages) { index, msg -> MessageBubble(msg, index) }
                 if (ui.loading) item { TypingBubble() }
@@ -84,55 +83,63 @@ fun AiChatScreen(
 }
 
 @Composable
-private fun AiHeader() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+private fun AiHeader(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("‹", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        }
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFF2A2622), Color(0xFF141210))))
-                .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("🤖", style = MaterialTheme.typography.titleMedium)
+            AiCircleButton(text = "‹", onClick = onBack)
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(9.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF22C55E))
-                    .border(androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.background), CircleShape),
-            )
-        }
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF22C55E)))
-                Text(stringResource(R.string.ai_online), color = Color(0xFF22C55E), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    .background(Brush.linearGradient(listOf(Color(0xFF2A2622), Color(0xFF141210))))
+                    .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🤖", style = MaterialTheme.typography.titleMedium)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22C55E))
+                        .border(androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface), CircleShape),
+                )
             }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF22C55E)))
+                    Text(stringResource(R.string.ai_online), color = Color(0xFF22C55E), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+            }
+            AiCircleButton(text = "↻", onClick = {})
         }
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("↻", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
-        }
+        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f), thickness = 0.5.dp)
+    }
+}
+
+@Composable
+private fun AiCircleButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
+            .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape)
+            .calSnapClickable(pressedScale = 0.84f, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -146,14 +153,40 @@ private fun QuickPrompts(enabled: Boolean, onPrompt: (String) -> Unit) {
         stringResource(R.string.ai_prompt_snack),
         stringResource(R.string.ai_prompt_cut),
     )
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        items(prompts) { prompt ->
-            CalSnapPill(
-                text = prompt,
-                selected = false,
-                onClick = if (enabled) ({ onPrompt(prompt) }) else null,
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            items(prompts) { prompt ->
+                AiSuggestionChip(
+                    text = prompt,
+                    onClick = if (enabled) ({ onPrompt(prompt) }) else null,
+                )
+            }
         }
+        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f), thickness = 0.5.dp)
+    }
+}
+
+@Composable
+private fun AiSuggestionChip(text: String, onClick: (() -> Unit)?) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), RoundedCornerShape(20.dp))
+            .then(if (onClick != null) Modifier.calSnapClickable(pressedScale = 0.91f, onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -184,29 +217,43 @@ private fun MessageBubble(message: AiChatViewModel.ChatMessage, index: Int) {
             horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(0.88f),
+                modifier = Modifier.fillMaxWidth(0.84f),
                 horizontalAlignment = if (message.fromUser) Alignment.End else Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = if (message.fromUser) stringResource(R.string.ai_you) else stringResource(R.string.nav_ai),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
+                if (!message.fromUser) {
+                    Text(
+                        text = stringResource(R.string.nav_ai).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 36.dp, bottom = 1.dp),
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .clip(
                             RoundedCornerShape(
-                                topStart = 24.dp,
-                                topEnd = 24.dp,
-                                bottomStart = if (message.fromUser) 24.dp else 7.dp,
-                                bottomEnd = if (message.fromUser) 7.dp else 24.dp,
+                                topStart = 20.dp,
+                                topEnd = 20.dp,
+                                bottomStart = if (message.fromUser) 20.dp else 5.dp,
+                                bottomEnd = if (message.fromUser) 5.dp else 20.dp,
                             ),
                         )
                         .background(if (message.fromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                        .padding(14.dp),
+                        .border(
+                            androidx.compose.foundation.BorderStroke(
+                                0.5.dp,
+                                if (message.fromUser) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
+                            ),
+                            RoundedCornerShape(
+                                topStart = 20.dp,
+                                topEnd = 20.dp,
+                                bottomStart = if (message.fromUser) 20.dp else 5.dp,
+                                bottomEnd = if (message.fromUser) 5.dp else 20.dp,
+                            ),
+                        )
+                        .padding(horizontal = 15.dp, vertical = 11.dp),
                 ) {
                     Text(
                         message.text,
@@ -224,9 +271,10 @@ private fun TypingBubble() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 5.dp, bottomEnd = 20.dp))
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .padding(14.dp),
+                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 5.dp, bottomEnd = 20.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 3.dp, color = CalSnapStreak)
@@ -252,61 +300,70 @@ private fun ErrorCard(message: String) {
 
 @Composable
 private fun InputBar(ui: AiChatViewModel.UiState, viewModel: AiChatViewModel) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Box(
+        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f), thickness = 0.5.dp)
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(999.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), RoundedCornerShape(999.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Bottom,
         ) {
-            BasicTextField(
-                value = ui.input,
-                onValueChange = viewModel::updateInput,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = ui.hasApiKey && !ui.loading,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (ui.input.isBlank()) {
-                            Text(stringResource(R.string.ai_input_hint), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), style = MaterialTheme.typography.bodyMedium)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                BasicTextField(
+                    value = ui.input,
+                    onValueChange = viewModel::updateInput,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = ui.hasApiKey && !ui.loading,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (ui.input.isBlank()) {
+                                Text(stringResource(R.string.ai_input_hint), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), style = MaterialTheme.typography.bodyMedium)
+                            }
+                            innerTextField()
                         }
-                        innerTextField()
-                    }
-                },
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape)
-                .calSnapClickable(enabled = ui.hasApiKey && !ui.loading, pressedScale = 0.86f, onClick = {}),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-        }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurface)
-                .calSnapClickable(
-                    enabled = ui.hasApiKey && ui.input.isNotBlank() && !ui.loading,
-                    pressedScale = 0.84f,
-                    onClick = viewModel::send,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Default.Send, contentDescription = stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(20.dp))
+                    },
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)), CircleShape)
+                    .calSnapClickable(enabled = ui.hasApiKey && !ui.loading, pressedScale = 0.86f, onClick = {}),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onSurface)
+                    .calSnapClickable(
+                        enabled = ui.hasApiKey && ui.input.isNotBlank() && !ui.loading,
+                        pressedScale = 0.84f,
+                        onClick = viewModel::send,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Send, contentDescription = stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(18.dp))
+            }
         }
     }
-    Spacer(Modifier.height(8.dp))
 }

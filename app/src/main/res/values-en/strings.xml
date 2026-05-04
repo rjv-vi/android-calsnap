@@ -166,8 +166,14 @@
     <string name="settings_section_ai">AI</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_profile">Profile</string>
+    <string name="settings_section_nutrition">Nutrition</string>
+    <string name="settings_section_api">API</string>
+    <string name="settings_section_notifications">Notifications</string>
     <string name="settings_section_data">Data</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_api_key">Gemini API key</string>
     <string name="settings_api_set">API key set ✓</string>
+    <string name="settings_api_set_short">Set ✓</string>
     <string name="settings_api_not_set">API key not set</string>
     <string name="settings_api_hint">Gemini API key (AIza…)</string>
     <string name="settings_api_save">Save key</string>
@@ -192,6 +198,11 @@
     <string name="settings_import_json">Import data (JSON)</string>
     <string name="settings_import_json_sub">Next M2 step</string>
     <string name="settings_reset_all">Reset all data</string>
+    <string name="settings_reminders">Reminders</string>
+    <string name="settings_reminders_sub">Configure reminder times</string>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_widgets_sub">Add to home screen</string>
+    <string name="settings_authors">CalSnap authors</string>
     <string name="settings_reset_title">Reset all data?</string>
     <string name="settings_reset_body">Profile, diary, water, weight, favourite foods and API key will be removed from this device.</string>
     <string name="settings_reset_action">Reset</string>
@@ -254,7 +265,7 @@
     <string name="progress_weight_input">New weight</string>
     <string name="progress_save">Save</string>
 
-    <string name="ai_title">AI nutritionist</string>
+    <string name="ai_title">AI Nutritionist</string>
     <string name="ai_subtitle">Uses your diary, water and goal</string>
     <string name="ai_online">Online</string>
     <string name="ai_input_hint">Ask anything…</string>
