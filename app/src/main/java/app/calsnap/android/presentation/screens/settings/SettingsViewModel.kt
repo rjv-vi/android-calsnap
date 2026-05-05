@@ -116,7 +116,12 @@ class SettingsViewModel @Inject constructor(
         prefs.setReminderConfig(config)
         ReminderScheduler.apply(context, config)
     }
-    fun setRemindersEnabled(on: Boolean) = saveReminderConfig(_ui.value.reminderConfig.copy(enabled = on))
+    fun setRemindersEnabled(on: Boolean) = viewModelScope.launch {
+        val config = _ui.value.reminderConfig.copy(enabled = on)
+        prefs.setReminderConfig(config)
+        ReminderScheduler.apply(context, config)
+        if (on) ReminderScheduler.show(context, "enabled")
+    }
     fun updateProfile(recalculateTargets: Boolean = false, update: (UserProfile) -> UserProfile) {
         viewModelScope.launch {
             val current = _ui.value.profile ?: return@launch

@@ -25,11 +25,9 @@ data class ReminderConfig(
     val breakfastTime: String = "08:30",
     val lunchTime: String = "13:00",
     val dinnerTime: String = "19:00",
-    val waterIntervalHours: Int = 2,
     val breakfastOn: Boolean = true,
     val lunchOn: Boolean = true,
     val dinnerOn: Boolean = true,
-    val waterOn: Boolean = false,
 )
 
 /**
@@ -67,11 +65,9 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         val REMINDER_BREAKFAST = stringPreferencesKey("reminder_breakfast")
         val REMINDER_LUNCH = stringPreferencesKey("reminder_lunch")
         val REMINDER_DINNER = stringPreferencesKey("reminder_dinner")
-        val REMINDER_WATER_INTERVAL = intPreferencesKey("reminder_water_interval")
         val REMINDER_BREAKFAST_ON = booleanPreferencesKey("reminder_breakfast_on")
         val REMINDER_LUNCH_ON = booleanPreferencesKey("reminder_lunch_on")
         val REMINDER_DINNER_ON = booleanPreferencesKey("reminder_dinner_on")
-        val REMINDER_WATER_ON = booleanPreferencesKey("reminder_water_on")
     }
 
     private val data: Flow<Preferences> = context.prefsDataStore.data.catch { error ->
@@ -147,11 +143,9 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
             breakfastTime = it[Keys.REMINDER_BREAKFAST] ?: "08:30",
             lunchTime = it[Keys.REMINDER_LUNCH] ?: "13:00",
             dinnerTime = it[Keys.REMINDER_DINNER] ?: "19:00",
-            waterIntervalHours = it[Keys.REMINDER_WATER_INTERVAL] ?: 2,
             breakfastOn = it[Keys.REMINDER_BREAKFAST_ON] ?: true,
             lunchOn = it[Keys.REMINDER_LUNCH_ON] ?: true,
             dinnerOn = it[Keys.REMINDER_DINNER_ON] ?: true,
-            waterOn = it[Keys.REMINDER_WATER_ON] ?: false,
         )
     }
 
@@ -172,11 +166,9 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         it[Keys.REMINDER_BREAKFAST] = config.breakfastTime
         it[Keys.REMINDER_LUNCH] = config.lunchTime
         it[Keys.REMINDER_DINNER] = config.dinnerTime
-        it[Keys.REMINDER_WATER_INTERVAL] = config.waterIntervalHours
         it[Keys.REMINDER_BREAKFAST_ON] = config.breakfastOn
         it[Keys.REMINDER_LUNCH_ON] = config.lunchOn
         it[Keys.REMINDER_DINNER_ON] = config.dinnerOn
-        it[Keys.REMINDER_WATER_ON] = config.waterOn
     }
 
     suspend fun wipe() = context.prefsDataStore.edit { it.clear() }

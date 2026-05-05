@@ -183,6 +183,7 @@
     <string name="settings_api_clear">Remove key</string>
     <string name="settings_model_title">Gemini model</string>
     <string name="settings_model_load">Load available models</string>
+    <string name="settings_model_count_suffix">models · swipe to scroll</string>
     <string name="settings_dark_theme">Dark theme</string>
     <string name="settings_language">Language</string>
     <string name="settings_sounds">Sounds</string>
@@ -221,10 +222,6 @@
     <string name="reminder_dinner_sub">Daily recap and dinner</string>
     <string name="reminder_dinner_body">How was your day? Log dinner in CalSnap.</string>
     <string name="reminder_meal_sub">Log a meal</string>
-    <string name="reminder_water">Water</string>
-    <string name="reminder_water_every">Remind every</string>
-    <string name="reminder_water_body">Don’t forget your water balance!</string>
-    <string name="reminder_hour_suffix">h</string>
     <string name="settings_authors">CalSnap authors</string>
     <string name="author_role_dev">Android port development and design</string>
     <string name="author_role_ideas">Product ideas and visual direction</string>

@@ -192,6 +192,7 @@
     <string name="settings_api_clear">Удалить ключ</string>
     <string name="settings_model_title">Модель Gemini</string>
     <string name="settings_model_load">Загрузить доступные модели</string>
+    <string name="settings_model_count_suffix">моделей · свайп для прокрутки</string>
     <string name="settings_dark_theme">Тёмная тема</string>
     <string name="settings_language">Язык</string>
     <string name="settings_sounds">Звуки</string>
@@ -230,10 +231,6 @@
     <string name="reminder_dinner_sub">Итоги дня и ужин</string>
     <string name="reminder_dinner_body">Как прошёл день? Запиши ужин в CalSnap.</string>
     <string name="reminder_meal_sub">Записать приём пищи</string>
-    <string name="reminder_water">Вода</string>
-    <string name="reminder_water_every">Напоминать каждые</string>
-    <string name="reminder_water_body">Не забывай про водный баланс!</string>
-    <string name="reminder_hour_suffix">ч</string>
     <string name="settings_authors">Авторы CalSnap</string>
     <string name="author_role_dev">Разработка и дизайн Android-порта</string>
     <string name="author_role_ideas">Идеи продукта и визуальное направление</string>

@@ -210,11 +210,9 @@ class DataExportRepository @Inject constructor(
         put("breakfast", breakfastTime)
         put("lunch", lunchTime)
         put("dinner", dinnerTime)
-        put("waterInterval", waterIntervalHours.toString())
         put("breakfast_on", breakfastOn)
         put("lunch_on", lunchOn)
         put("dinner_on", dinnerOn)
-        put("water_on", waterOn)
     }
 
     private fun parseReminderConfig(element: JsonElement?, enabled: Boolean?): ReminderConfig? {
@@ -228,11 +226,9 @@ class DataExportRepository @Inject constructor(
                 breakfastTime = cfg.stringValue("breakfast", "08:30"),
                 lunchTime = cfg.stringValue("lunch", "13:00"),
                 dinnerTime = cfg.stringValue("dinner", "19:00"),
-                waterIntervalHours = cfg.intValue("waterInterval", 2).coerceIn(1, 6),
                 breakfastOn = cfg.boolValue("breakfast_on", cfg.boolValue("breakfastOn", true)),
                 lunchOn = cfg.boolValue("lunch_on", cfg.boolValue("lunchOn", true)),
                 dinnerOn = cfg.boolValue("dinner_on", cfg.boolValue("dinnerOn", true)),
-                waterOn = cfg.boolValue("water_on", cfg.boolValue("waterOn", false)),
             )
         }.getOrNull()
     }

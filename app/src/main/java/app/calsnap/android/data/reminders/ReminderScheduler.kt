@@ -21,16 +21,21 @@ object ReminderScheduler {
     private const val CHANNEL_ID = "calsnap_reminders"
     private const val PREFS = "calsnap_reminder_schedule"
     private const val ACTION_REMINDER = "app.calsnap.android.REMINDER"
+    private const val EXTRA_TYPE = "type"
+    private const val BREAKFAST = "breakfast"
+    private const val LUNCH = "lunch"
+    private const val DINNER = "dinner"
+    private const val REQ_BREAKFAST = 1001
+    private const val REQ_LUNCH = 1002
+    private const val REQ_DINNER = 1003
+    private const val REQ_OLD_WATER = 1004
 
     fun apply(context: Context, config: ReminderConfig) {
         save(context, config)
         createChannel(context)
         cancel(context)
         if (!config.enabled) return
-        if (config.breakfastOn) scheduleDaily(context, "breakfast", config.breakfastTime, 1001)
-        if (config.lunchOn) scheduleDaily(context, "lunch", config.lunchTime, 1002)
-        if (config.dinnerOn) scheduleDaily(context, "dinner", config.dinnerTime, 1003)
-        if (config.waterOn && config.waterIntervalHours > 0) scheduleWater(context, config.waterIntervalHours)
+        scheduleEnabled(context, config)
     }
 
     fun restore(context: Context) {
@@ -39,7 +44,9 @@ object ReminderScheduler {
 
     fun cancel(context: Context) {
         val alarm = context.getSystemService(AlarmManager::class.java)
-        listOf(1001, 1002, 1003, 1004).forEach { alarm.cancel(pendingIntent(context, it, "cancel")) }
+        listOf(REQ_BREAKFAST, REQ_LUNCH, REQ_DINNER, REQ_OLD_WATER).forEach {
+            alarm.cancel(pendingIntent(context, it, "cancel"))
+        }
     }
 
     fun show(context: Context, type: String) {
@@ -48,10 +55,11 @@ object ReminderScheduler {
         ) return
         createChannel(context)
         val (title, body) = when (type) {
-            "breakfast" -> "🌅 CalSnap" to context.getString(R.string.reminder_breakfast_body)
-            "lunch" -> "☀️ CalSnap" to context.getString(R.string.reminder_lunch_body)
-            "dinner" -> "🌙 CalSnap" to context.getString(R.string.reminder_dinner_body)
-            else -> "💧 CalSnap" to context.getString(R.string.reminder_water_body)
+            BREAKFAST -> "🌅 CalSnap" to context.getString(R.string.reminder_breakfast_body)
+            LUNCH -> "☀️ CalSnap" to context.getString(R.string.reminder_lunch_body)
+            DINNER -> "🌙 CalSnap" to context.getString(R.string.reminder_dinner_body)
+            "enabled" -> "🍎 CalSnap" to context.getString(R.string.reminders_enabled_toast)
+            else -> return
         }
         val open = PendingIntent.getActivity(
             context,
@@ -60,7 +68,7 @@ object ReminderScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setContentIntent(open)
@@ -68,6 +76,20 @@ object ReminderScheduler {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         NotificationManagerCompat.from(context).notify(type.hashCode(), notification)
+    }
+
+    fun fire(context: Context, type: String) {
+        show(context, type)
+        val config = load(context)
+        if (config.enabled && isEnabled(config, type)) {
+            scheduleDaily(context, type, timeFor(config, type), requestCodeFor(type))
+        }
+    }
+
+    private fun scheduleEnabled(context: Context, config: ReminderConfig) {
+        if (config.breakfastOn) scheduleDaily(context, BREAKFAST, config.breakfastTime, REQ_BREAKFAST)
+        if (config.lunchOn) scheduleDaily(context, LUNCH, config.lunchTime, REQ_LUNCH)
+        if (config.dinnerOn) scheduleDaily(context, DINNER, config.dinnerTime, REQ_DINNER)
     }
 
     private fun scheduleDaily(context: Context, type: String, time: String, requestCode: Int) {
@@ -79,21 +101,10 @@ object ReminderScheduler {
             set(Calendar.MILLISECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
         }.timeInMillis
-        context.getSystemService(AlarmManager::class.java).setInexactRepeating(
+        context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             trigger,
-            AlarmManager.INTERVAL_DAY,
             pendingIntent(context, requestCode, type),
-        )
-    }
-
-    private fun scheduleWater(context: Context, hours: Int) {
-        val interval = hours.coerceIn(1, 6) * AlarmManager.INTERVAL_HOUR
-        context.getSystemService(AlarmManager::class.java).setInexactRepeating(
-            AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + interval,
-            interval,
-            pendingIntent(context, 1004, "water"),
         )
     }
 
@@ -103,9 +114,30 @@ object ReminderScheduler {
             requestCode,
             Intent(context, ReminderReceiver::class.java)
                 .setAction(ACTION_REMINDER)
-                .putExtra("type", type),
+                .putExtra(EXTRA_TYPE, type),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+
+    private fun isEnabled(config: ReminderConfig, type: String): Boolean = when (type) {
+        BREAKFAST -> config.breakfastOn
+        LUNCH -> config.lunchOn
+        DINNER -> config.dinnerOn
+        else -> false
+    }
+
+    private fun timeFor(config: ReminderConfig, type: String): String = when (type) {
+        BREAKFAST -> config.breakfastTime
+        LUNCH -> config.lunchTime
+        DINNER -> config.dinnerTime
+        else -> "08:30"
+    }
+
+    private fun requestCodeFor(type: String): Int = when (type) {
+        BREAKFAST -> REQ_BREAKFAST
+        LUNCH -> REQ_LUNCH
+        DINNER -> REQ_DINNER
+        else -> REQ_BREAKFAST
+    }
 
     private fun parseTime(time: String): Pair<Int, Int> {
         val parts = time.split(':')
@@ -125,11 +157,9 @@ object ReminderScheduler {
             .putString("breakfast", config.breakfastTime)
             .putString("lunch", config.lunchTime)
             .putString("dinner", config.dinnerTime)
-            .putInt("waterInterval", config.waterIntervalHours)
             .putBoolean("breakfastOn", config.breakfastOn)
             .putBoolean("lunchOn", config.lunchOn)
             .putBoolean("dinnerOn", config.dinnerOn)
-            .putBoolean("waterOn", config.waterOn)
             .apply()
     }
 
@@ -140,18 +170,16 @@ object ReminderScheduler {
             breakfastTime = prefs.getString("breakfast", "08:30") ?: "08:30",
             lunchTime = prefs.getString("lunch", "13:00") ?: "13:00",
             dinnerTime = prefs.getString("dinner", "19:00") ?: "19:00",
-            waterIntervalHours = prefs.getInt("waterInterval", 2),
             breakfastOn = prefs.getBoolean("breakfastOn", true),
             lunchOn = prefs.getBoolean("lunchOn", true),
             dinnerOn = prefs.getBoolean("dinnerOn", true),
-            waterOn = prefs.getBoolean("waterOn", false),
         )
     }
 }
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        ReminderScheduler.show(context, intent.getStringExtra("type").orEmpty())
+        ReminderScheduler.fire(context, intent.getStringExtra("type").orEmpty())
     }
 }
 

@@ -288,7 +288,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     .padding(horizontal = 18.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 ModelCard(
                     hasKey = ui.hasGeminiKey,
                     selectedModel = ui.selectedModel,
@@ -296,7 +295,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     loading = ui.modelsLoading,
                     error = ui.modelsError,
                     onLoad = viewModel::loadGeminiModels,
-                    onSelect = viewModel::selectGeminiModel,
+                    onClose = { modelSheet = false },
+                    onSelect = {
+                        viewModel.selectGeminiModel(it)
+                        modelSheet = false
+                    },
                 )
                 Spacer(Modifier.height(18.dp))
             }
@@ -312,6 +315,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         ) {
             RemindersSheet(
                 config = ui.reminderConfig,
+                onClose = { remindersSheet = false },
                 onEnable = { enabled -> if (enabled) requestReminderEnable() else viewModel.setRemindersEnabled(false) },
                 onSave = {
                     viewModel.saveReminderConfig(it)
@@ -330,7 +334,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             tonalElevation = 0.dp,
             shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
         ) {
-            AuthorsSheet()
+            AuthorsSheet(onClose = { authorsSheet = false })
         }
     }
     CalSnapConfirmDialog(
@@ -356,17 +360,21 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 private fun ProfileCard(profile: UserProfile?, onEdit: (ProfileSheet) -> Unit) {
     SettingsGroupCard {
         SettingsValueRow(
-            icon = "Aa",
+            icon = "👤",
             iconBrush = Brush.linearGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB))),
             title = stringResource(R.string.settings_profile_name),
             value = profile?.name?.takeIf { it.isNotBlank() } ?: "—",
             onClick = { onEdit(ProfileSheet.NAME) },
         )
         SettingsDivider()
+        val paramsSummary = profile?.let {
+            "${it.heightCm.toInt()} ${stringResource(R.string.unit_cm)} · ${it.weightKg.toInt()} ${stringResource(R.string.unit_kg)}"
+        }
         SettingsValueRow(
-            icon = "cm",
-            iconBrush = Brush.linearGradient(listOf(Color(0xFF4ADE80), Color(0xFF16A34A))),
+            icon = "⚖️",
+            iconBrush = Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0D9488))),
             title = stringResource(R.string.settings_profile_params),
+            subtitle = paramsSummary,
             value = "›",
             onClick = { onEdit(ProfileSheet.PARAMS) },
         )
@@ -589,7 +597,10 @@ private fun ProfileEditSheet(
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(title, style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, color = MaterialTheme.colorScheme.onSurface), modifier = Modifier.weight(1f))
+            SheetCloseButton(onDismiss)
+        }
         when (sheet) {
             ProfileSheet.NAME -> {
                 CalSnapTextField(
@@ -864,21 +875,41 @@ private fun SheetBody(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
+private fun SheetCloseButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .shadow(6.dp, CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)), CircleShape)
+            .calSnapClickable(pressedScale = 0.9f, sound = CalSnapSoundEffect.SheetClose, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("×", style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onSurface))
+    }
+}
+
+@Composable
 private fun RemindersSheet(
     config: ReminderConfig,
+    onClose: () -> Unit,
     onEnable: (Boolean) -> Unit,
     onSave: (ReminderConfig) -> Unit,
 ) {
     var draft by remember(config) { mutableStateOf(config) }
     SheetBody {
-        Text(stringResource(R.string.reminders_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.reminders_title), style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, color = MaterialTheme.colorScheme.onSurface), modifier = Modifier.weight(1f))
+            SheetCloseButton(onClose)
+        }
         SettingsGroupCard {
             ToggleValueRow(
                 icon = "🔔",
                 iconBrush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))),
                 title = stringResource(R.string.reminders_master),
-                subtitle = if (config.enabled) stringResource(R.string.reminders_active) else stringResource(R.string.reminders_master_sub),
-                checked = config.enabled,
+                subtitle = if (draft.enabled) stringResource(R.string.reminders_active) else stringResource(R.string.reminders_master_sub),
+                checked = draft.enabled,
                 onChange = {
                     onEnable(it)
                     draft = draft.copy(enabled = it)
@@ -922,16 +953,9 @@ private fun RemindersSheet(
                 onTime = { draft = draft.copy(dinnerTime = it) },
                 onEnabled = { draft = draft.copy(dinnerOn = it) },
             )
-            SettingsDivider()
-            ReminderWaterRow(
-                interval = draft.waterIntervalHours,
-                enabled = draft.waterOn,
-                onInterval = { draft = draft.copy(waterIntervalHours = it) },
-                onEnabled = { draft = draft.copy(waterOn = it) },
-            )
         }
         CalSnapPrimaryButton(
-            onClick = { onSave(draft.copy(enabled = config.enabled || draft.enabled)) },
+            onClick = { onSave(draft) },
             modifier = Modifier.fillMaxWidth(),
             sound = CalSnapSoundEffect.NotificationSave,
         ) {
@@ -959,60 +983,10 @@ private fun ReminderTimeRow(
     ) {
         SettingsIconTile(icon = icon, brush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface))
+            Text(subtitle, style = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant))
         }
         TimeBox(value = time, onValueChange = onTime, modifier = Modifier.weight(0.48f))
-        Box(
-            Modifier.calSnapClickable(
-                sound = CalSnapSoundEffect.Toggle,
-                haptic = CalSnapHapticEffect.Tick,
-                onClick = { onEnabled(!enabled) },
-            ),
-        ) {
-            SettingsToggle(checked = enabled)
-        }
-    }
-}
-
-@Composable
-private fun ReminderWaterRow(
-    interval: Int,
-    enabled: Boolean,
-    onInterval: (Int) -> Unit,
-    onEnabled: (Boolean) -> Unit,
-) {
-    val suffix = stringResource(R.string.reminder_hour_suffix)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        SettingsIconTile(icon = "💧", brush = Brush.linearGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB))))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.reminder_water), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.reminder_water_every), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(1, 2, 3).forEach { hours ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (interval == hours) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant)
-                        .calSnapClickable { onInterval(hours) }
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
-                ) {
-                    Text(
-                        text = "$hours$suffix",
-                        color = if (interval == hours) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            }
-        }
         Box(
             Modifier.calSnapClickable(
                 sound = CalSnapSoundEffect.Toggle,
@@ -1038,8 +1012,11 @@ private fun TimeBox(value: String, onValueChange: (String) -> Unit, modifier: Mo
 }
 
 @Composable
-private fun AuthorsSheet() {
+private fun AuthorsSheet(onClose: () -> Unit) {
     SheetBody {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            SheetCloseButton(onClose)
+        }
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🍎", style = TextStyle(fontSize = 64.sp))
@@ -1162,31 +1139,36 @@ private fun ModelCard(
     loading: Boolean,
     error: String?,
     onLoad: () -> Unit,
+    onClose: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    CalSnapCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), padding = PaddingValues(16.dp), elevation = 14.dp) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CalSnapIconTile(icon = "✨", size = 48.dp)
+            Text("🧠", style = TextStyle(fontSize = 24.sp))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_model_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                Text(selectedModel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.settings_model_title), style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp, color = MaterialTheme.colorScheme.onSurface))
+                Text(
+                    text = if (models.isNotEmpty()) "${models.size} ${stringResource(R.string.settings_model_count_suffix)}" else selectedModel,
+                    style = TextStyle(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            SheetCloseButton(onClose)
+        }
+
+        if (models.isEmpty()) {
+            CalSnapSecondaryButton(onClick = onLoad, enabled = hasKey && !loading, modifier = Modifier.fillMaxWidth(), sound = CalSnapSoundEffect.Select) {
+                if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 3.dp, color = CalSnapStreak)
+                else Text(stringResource(R.string.settings_model_load))
             }
         }
-        Spacer(Modifier.height(12.dp))
-        CalSnapSecondaryButton(onClick = onLoad, enabled = hasKey && !loading, modifier = Modifier.fillMaxWidth(), sound = CalSnapSoundEffect.Select) {
-            if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 3.dp, color = CalSnapStreak)
-            else Text(stringResource(R.string.settings_model_load))
-        }
         error?.let {
-            Spacer(Modifier.height(10.dp))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         }
-        if (models.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                models.take(12).forEach { model ->
-                    ModelRow(model, selected = model.id == selectedModel, onSelect = { onSelect(model.id) })
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            models.take(24).forEach { model ->
+                ModelRow(model, selected = model.id == selectedModel, onSelect = { onSelect(model.id) })
             }
         }
     }
@@ -1197,18 +1179,20 @@ private fun ModelRow(model: GeminiClient.GeminiModelInfo, selected: Boolean, onS
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
-            .calSnapClickable(pressedScale = 0.97f, sound = CalSnapSoundEffect.Select, onClick = onSelect)
-            .padding(12.dp),
+            .shadow(if (selected) 0.dp else 4.dp, RoundedCornerShape(18.dp), clip = false)
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f))
+            .border(BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)), RoundedCornerShape(18.dp))
+            .calSnapClickable(pressedScale = 0.985f, sound = CalSnapSoundEffect.Select, onClick = onSelect)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(if (selected) "✓" else "○", color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black)
         Column(Modifier.weight(1f)) {
-            Text(model.name, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
-            Text(model.id, color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(model.name, color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface, style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Black))
+            Text(model.id, color = if (selected) MaterialTheme.colorScheme.background.copy(alpha = 0.72f) else MaterialTheme.colorScheme.onSurfaceVariant, style = TextStyle(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        if (selected) Text("✓", color = MaterialTheme.colorScheme.background, style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Light))
     }
 }
 
@@ -1257,11 +1241,11 @@ private fun SettingsValueRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 52.dp)
             .then(
                 if (onClick != null) {
                     Modifier.calSnapClickable(
-                        pressedScale = 0.97f,
+                        pressedScale = 0.985f,
                         sound = CalSnapSoundEffect.SheetOpen,
                         onClick = onClick,
                     )
@@ -1277,17 +1261,16 @@ private fun SettingsValueRow(
             textColor = iconTextColor,
         )
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = titleColor ?: MaterialTheme.colorScheme.onSurface)
+            Text(title, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = titleColor ?: MaterialTheme.colorScheme.onSurface))
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, style = TextStyle(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         value?.let {
             Text(
                 it,
-                style = MaterialTheme.typography.bodyMedium,
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1307,9 +1290,9 @@ private fun ToggleValueRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 52.dp)
             .calSnapClickable(
-                pressedScale = 0.989f,
+                pressedScale = 0.985f,
                 sound = CalSnapSoundEffect.Toggle,
                 haptic = CalSnapHapticEffect.Tick,
                 onClick = { onChange(!checked) },
@@ -1320,9 +1303,9 @@ private fun ToggleValueRow(
     ) {
         SettingsIconTile(icon = icon, brush = iconBrush)
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(title, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface))
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, style = TextStyle(fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         SettingsToggle(checked = checked)
@@ -1359,12 +1342,12 @@ private fun SettingsIconTile(
     Box(
         modifier = Modifier
             .size(34.dp)
-            .shadow(6.dp, RoundedCornerShape(10.dp), clip = false)
+            .shadow(4.dp, RoundedCornerShape(10.dp), clip = false)
             .clip(RoundedCornerShape(10.dp))
             .background(brush),
         contentAlignment = Alignment.Center,
     ) {
-        Text(icon, color = textColor, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+        Text(icon, color = textColor, style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Black))
     }
 }
 
