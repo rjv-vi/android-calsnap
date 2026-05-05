@@ -2,6 +2,7 @@ package app.calsnap.android.presentation.screens.settings
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -47,17 +48,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import app.calsnap.android.R
 import app.calsnap.android.data.model.UserProfile
+import app.calsnap.android.data.preferences.ReminderConfig
 import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.domain.BmrCalculator
 import app.calsnap.android.presentation.components.AnimatedSection
@@ -83,17 +87,19 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     var profileSheet by remember { mutableStateOf<ProfileSheet?>(null) }
     var apiKeySheet by remember { mutableStateOf(false) }
     var modelSheet by remember { mutableStateOf(false) }
+    var remindersSheet by remember { mutableStateOf(false) }
+    var authorsSheet by remember { mutableStateOf(false) }
     var resetConfirm by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val toast = LocalCalSnapToastHost.current
     val effects = LocalCalSnapEffects.current
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        toast.show(
-            context.getString(
-                if (granted) R.string.settings_notifications_enabled
-                else R.string.settings_notifications_permission_needed,
-            ),
-        )
+        if (granted) {
+            viewModel.setRemindersEnabled(true)
+            toast.show(context.getString(R.string.reminders_enabled_toast))
+        } else {
+            toast.show(context.getString(R.string.reminders_permission_needed))
+        }
     }
     val jsonLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val payload = ui.exportPayload
@@ -136,6 +142,17 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         ui.importError?.let { toast.show(it) }
         if (ui.importDone) toast.show(context.getString(R.string.settings_import_done))
         if (ui.importError != null || ui.importDone) viewModel.consumeImportResult()
+    }
+
+    fun requestReminderEnable() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.setRemindersEnabled(true)
+            toast.show(context.getString(R.string.reminders_enabled_toast))
+        }
     }
 
     CalSnapScreen(glow = false) {
@@ -191,14 +208,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 AnimatedSection(4) {
                     SettingsSection(label = stringResource(R.string.settings_section_notifications)) {
                         NotificationsCard(
-                            onOpen = {
-                                effects.sound.play(CalSnapSoundEffect.NotificationSave)
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                                    toast.show(context.getString(R.string.settings_notifications_enabled))
-                                } else {
-                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
+                            config = ui.reminderConfig,
+                            onOpen = { remindersSheet = true },
                         )
                     }
                 }
@@ -215,7 +226,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 }
                 AnimatedSection(6) {
                     SettingsSection(label = stringResource(R.string.settings_section_about)) {
-                        AboutCard()
+                        AboutCard(onAuthors = { authorsSheet = true })
                     }
                 }
                 Spacer(Modifier.height(96.dp))
@@ -289,6 +300,37 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 )
                 Spacer(Modifier.height(18.dp))
             }
+        }
+    }
+    if (remindersSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { remindersSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        ) {
+            RemindersSheet(
+                config = ui.reminderConfig,
+                onEnable = { enabled -> if (enabled) requestReminderEnable() else viewModel.setRemindersEnabled(false) },
+                onSave = {
+                    viewModel.saveReminderConfig(it)
+                    effects.sound.play(CalSnapSoundEffect.NotificationSave)
+                    toast.show(context.getString(R.string.reminders_saved_toast))
+                    remindersSheet = false
+                },
+            )
+        }
+    }
+    if (authorsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { authorsSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        ) {
+            AuthorsSheet()
         }
     }
     CalSnapConfirmDialog(
@@ -440,13 +482,14 @@ private fun ApiCard(
 }
 
 @Composable
-private fun NotificationsCard(onOpen: () -> Unit) {
+private fun NotificationsCard(config: ReminderConfig, onOpen: () -> Unit) {
+    val subtitle = if (config.enabled) stringResource(R.string.reminders_active) else stringResource(R.string.reminders_subtitle)
     SettingsGroupCard {
         SettingsValueRow(
             icon = "🔔",
             iconBrush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))),
-            title = stringResource(R.string.settings_reminders),
-            subtitle = stringResource(R.string.settings_reminders_sub),
+            title = stringResource(R.string.reminders_title_short),
+            subtitle = subtitle,
             value = "›",
             onClick = onOpen,
         )
@@ -454,22 +497,15 @@ private fun NotificationsCard(onOpen: () -> Unit) {
 }
 
 @Composable
-private fun AboutCard() {
+private fun AboutCard(onAuthors: () -> Unit) {
     SettingsGroupCard {
-        SettingsValueRow(
-            icon = "📊",
-            iconBrush = Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))),
-            title = stringResource(R.string.settings_widgets),
-            subtitle = stringResource(R.string.settings_widgets_sub),
-            value = "›",
-        )
-        SettingsDivider()
         SettingsValueRow(
             icon = "🍎",
             iconBrush = Brush.linearGradient(listOf(CalSnapStreak, Color(0xFFFF9A3C))),
             title = stringResource(R.string.settings_authors),
             subtitle = "RJV · Rizan",
             value = "›",
+            onClick = onAuthors,
         )
     }
 }
@@ -812,6 +848,265 @@ private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
         elevation = 12.dp,
         content = content,
     )
+}
+
+@Composable
+private fun SheetBody(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun RemindersSheet(
+    config: ReminderConfig,
+    onEnable: (Boolean) -> Unit,
+    onSave: (ReminderConfig) -> Unit,
+) {
+    var draft by remember(config) { mutableStateOf(config) }
+    SheetBody {
+        Text(stringResource(R.string.reminders_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        SettingsGroupCard {
+            ToggleValueRow(
+                icon = "🔔",
+                iconBrush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))),
+                title = stringResource(R.string.reminders_master),
+                subtitle = if (config.enabled) stringResource(R.string.reminders_active) else stringResource(R.string.reminders_master_sub),
+                checked = config.enabled,
+                onChange = {
+                    onEnable(it)
+                    draft = draft.copy(enabled = it)
+                },
+            )
+        }
+        Text(
+            text = stringResource(R.string.reminders_times_label).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        SettingsGroupCard {
+            ReminderTimeRow(
+                icon = "🌅",
+                title = stringResource(R.string.reminder_breakfast),
+                subtitle = stringResource(R.string.reminder_meal_sub),
+                time = draft.breakfastTime,
+                enabled = draft.breakfastOn,
+                onTime = { draft = draft.copy(breakfastTime = it) },
+                onEnabled = { draft = draft.copy(breakfastOn = it) },
+            )
+            SettingsDivider()
+            ReminderTimeRow(
+                icon = "☀️",
+                title = stringResource(R.string.reminder_lunch),
+                subtitle = stringResource(R.string.reminder_lunch_sub),
+                time = draft.lunchTime,
+                enabled = draft.lunchOn,
+                onTime = { draft = draft.copy(lunchTime = it) },
+                onEnabled = { draft = draft.copy(lunchOn = it) },
+            )
+            SettingsDivider()
+            ReminderTimeRow(
+                icon = "🌙",
+                title = stringResource(R.string.reminder_dinner),
+                subtitle = stringResource(R.string.reminder_dinner_sub),
+                time = draft.dinnerTime,
+                enabled = draft.dinnerOn,
+                onTime = { draft = draft.copy(dinnerTime = it) },
+                onEnabled = { draft = draft.copy(dinnerOn = it) },
+            )
+            SettingsDivider()
+            ReminderWaterRow(
+                interval = draft.waterIntervalHours,
+                enabled = draft.waterOn,
+                onInterval = { draft = draft.copy(waterIntervalHours = it) },
+                onEnabled = { draft = draft.copy(waterOn = it) },
+            )
+        }
+        CalSnapPrimaryButton(
+            onClick = { onSave(draft.copy(enabled = config.enabled || draft.enabled)) },
+            modifier = Modifier.fillMaxWidth(),
+            sound = CalSnapSoundEffect.NotificationSave,
+        ) {
+            Text(stringResource(R.string.save))
+        }
+    }
+}
+
+@Composable
+private fun ReminderTimeRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    time: String,
+    enabled: Boolean,
+    onTime: (String) -> Unit,
+    onEnabled: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SettingsIconTile(icon = icon, brush = Brush.linearGradient(listOf(Color(0xFFFB923C), Color(0xFFEF4444))))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TimeBox(value = time, onValueChange = onTime, modifier = Modifier.weight(0.48f))
+        Box(
+            Modifier.calSnapClickable(
+                sound = CalSnapSoundEffect.Toggle,
+                haptic = CalSnapHapticEffect.Tick,
+                onClick = { onEnabled(!enabled) },
+            ),
+        ) {
+            SettingsToggle(checked = enabled)
+        }
+    }
+}
+
+@Composable
+private fun ReminderWaterRow(
+    interval: Int,
+    enabled: Boolean,
+    onInterval: (Int) -> Unit,
+    onEnabled: (Boolean) -> Unit,
+) {
+    val suffix = stringResource(R.string.reminder_hour_suffix)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SettingsIconTile(icon = "💧", brush = Brush.linearGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB))))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.reminder_water), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.reminder_water_every), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(1, 2, 3).forEach { hours ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (interval == hours) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant)
+                        .calSnapClickable { onInterval(hours) }
+                        .padding(horizontal = 9.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        text = "$hours$suffix",
+                        color = if (interval == hours) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+        }
+        Box(
+            Modifier.calSnapClickable(
+                sound = CalSnapSoundEffect.Toggle,
+                haptic = CalSnapHapticEffect.Tick,
+                onClick = { onEnabled(!enabled) },
+            ),
+        ) {
+            SettingsToggle(checked = enabled)
+        }
+    }
+}
+
+@Composable
+private fun TimeBox(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    CalSnapTextField(
+        value = value,
+        onValueChange = { raw -> onValueChange(raw.filter { it.isDigit() || it == ':' }.take(5)) },
+        label = "",
+        placeholder = "08:30",
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun AuthorsSheet() {
+    SheetBody {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🍎", style = TextStyle(fontSize = 64.sp))
+                Text("CalSnap", style = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp, color = MaterialTheme.colorScheme.onSurface))
+                Text(stringResource(R.string.settings_footer_v), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            }
+        }
+        Text(
+            stringResource(R.string.settings_authors).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        AuthorRow(
+            initials = "RJV",
+            name = "RJV",
+            role = stringResource(R.string.author_role_dev),
+            chip = "DEV",
+            brush = Brush.linearGradient(listOf(CalSnapStreak, Color(0xFFFF4500))),
+        )
+        AuthorRow(
+            initials = "RZ",
+            name = "Rizan",
+            role = stringResource(R.string.author_role_ideas),
+            chip = "IDEAS",
+            brush = Brush.linearGradient(listOf(Color(0xFFC084FC), Color(0xFF9333EA))),
+        )
+        Text(stringResource(R.string.authors_footer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp))
+    }
+}
+
+@Composable
+private fun AuthorRow(initials: String, name: String, role: String, chip: String, brush: Brush) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp), clip = false)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)), RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(brush),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(initials, color = Color.White, fontWeight = FontWeight.Black)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Text(role, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(CalSnapStreak.copy(alpha = 0.12f))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text(chip, color = CalSnapStreak, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable

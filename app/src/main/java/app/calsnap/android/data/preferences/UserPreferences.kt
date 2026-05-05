@@ -20,6 +20,18 @@ import javax.inject.Singleton
 
 private val Context.prefsDataStore by preferencesDataStore(name = "calsnap_prefs")
 
+data class ReminderConfig(
+    val enabled: Boolean = false,
+    val breakfastTime: String = "08:30",
+    val lunchTime: String = "13:00",
+    val dinnerTime: String = "19:00",
+    val waterIntervalHours: Int = 2,
+    val breakfastOn: Boolean = true,
+    val lunchOn: Boolean = true,
+    val dinnerOn: Boolean = true,
+    val waterOn: Boolean = false,
+)
+
 /**
  * Wraps DataStore<Preferences> into a typed API centred around
  * [UserProfile] + a few global flags (onboarding done, theme, language).
@@ -51,6 +63,15 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
         val SOUND_ON    = booleanPreferencesKey("sound_on")
         val HAPTIC_ON   = booleanPreferencesKey("haptic_on")
         val GEMINI_MODEL= stringPreferencesKey("gemini_model")
+        val REMINDERS_ON = booleanPreferencesKey("reminders_on")
+        val REMINDER_BREAKFAST = stringPreferencesKey("reminder_breakfast")
+        val REMINDER_LUNCH = stringPreferencesKey("reminder_lunch")
+        val REMINDER_DINNER = stringPreferencesKey("reminder_dinner")
+        val REMINDER_WATER_INTERVAL = intPreferencesKey("reminder_water_interval")
+        val REMINDER_BREAKFAST_ON = booleanPreferencesKey("reminder_breakfast_on")
+        val REMINDER_LUNCH_ON = booleanPreferencesKey("reminder_lunch_on")
+        val REMINDER_DINNER_ON = booleanPreferencesKey("reminder_dinner_on")
+        val REMINDER_WATER_ON = booleanPreferencesKey("reminder_water_on")
     }
 
     private val data: Flow<Preferences> = context.prefsDataStore.data.catch { error ->
@@ -120,6 +141,20 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     val geminiModel: Flow<String> =
         data.map { it[Keys.GEMINI_MODEL] ?: "gemini-flash-lite-latest" }
 
+    val reminderConfig: Flow<ReminderConfig> = data.map {
+        ReminderConfig(
+            enabled = it[Keys.REMINDERS_ON] ?: false,
+            breakfastTime = it[Keys.REMINDER_BREAKFAST] ?: "08:30",
+            lunchTime = it[Keys.REMINDER_LUNCH] ?: "13:00",
+            dinnerTime = it[Keys.REMINDER_DINNER] ?: "19:00",
+            waterIntervalHours = it[Keys.REMINDER_WATER_INTERVAL] ?: 2,
+            breakfastOn = it[Keys.REMINDER_BREAKFAST_ON] ?: true,
+            lunchOn = it[Keys.REMINDER_LUNCH_ON] ?: true,
+            dinnerOn = it[Keys.REMINDER_DINNER_ON] ?: true,
+            waterOn = it[Keys.REMINDER_WATER_ON] ?: false,
+        )
+    }
+
     suspend fun seedAppearanceIfMissing(darkTheme: Boolean, language: String) = context.prefsDataStore.edit {
         if (!it.contains(Keys.DARK_THEME)) it[Keys.DARK_THEME] = darkTheme
         if (!it.contains(Keys.LANGUAGE)) it[Keys.LANGUAGE] = language
@@ -132,6 +167,17 @@ class UserPreferences @Inject constructor(@ApplicationContext private val contex
     suspend fun setSoundOn(on: Boolean)   = context.prefsDataStore.edit { it[Keys.SOUND_ON]  = on }
     suspend fun setHapticOn(on: Boolean)  = context.prefsDataStore.edit { it[Keys.HAPTIC_ON] = on }
     suspend fun setGeminiModel(id: String)= context.prefsDataStore.edit { it[Keys.GEMINI_MODEL] = id }
+    suspend fun setReminderConfig(config: ReminderConfig) = context.prefsDataStore.edit {
+        it[Keys.REMINDERS_ON] = config.enabled
+        it[Keys.REMINDER_BREAKFAST] = config.breakfastTime
+        it[Keys.REMINDER_LUNCH] = config.lunchTime
+        it[Keys.REMINDER_DINNER] = config.dinnerTime
+        it[Keys.REMINDER_WATER_INTERVAL] = config.waterIntervalHours
+        it[Keys.REMINDER_BREAKFAST_ON] = config.breakfastOn
+        it[Keys.REMINDER_LUNCH_ON] = config.lunchOn
+        it[Keys.REMINDER_DINNER_ON] = config.dinnerOn
+        it[Keys.REMINDER_WATER_ON] = config.waterOn
+    }
 
     suspend fun wipe() = context.prefsDataStore.edit { it.clear() }
 }

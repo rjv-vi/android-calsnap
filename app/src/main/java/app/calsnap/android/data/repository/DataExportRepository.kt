@@ -7,6 +7,7 @@ import app.calsnap.android.data.database.entity.FoodLogEntity
 import app.calsnap.android.data.database.entity.WaterEntity
 import app.calsnap.android.data.database.entity.WeightEntity
 import app.calsnap.android.data.model.UserProfile
+import app.calsnap.android.data.preferences.ReminderConfig
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.preferences.UserPreferences
 import app.calsnap.android.domain.BmrCalculator
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -57,6 +59,7 @@ class DataExportRepository @Inject constructor(
         val darkTheme = prefs.darkTheme.first()
         val soundOn = prefs.soundOn.first()
         val hapticOn = prefs.hapticOn.first()
+        val reminders = prefs.reminderConfig.first()
         return json.encodeToString(
             buildJsonObject {
                 put("version", 1)
@@ -74,8 +77,8 @@ class DataExportRepository @Inject constructor(
                 put("cal", profile?.kcalGoal?.toString().orEmpty())
                 put("hfx", if (hapticOn) "1" else "0")
                 put("sfx", if (soundOn) "1" else "0")
-                put("notif", "0")
-                put("notifCfg", "")
+                put("notif", if (reminders.enabled) "1" else "0")
+                put("notifCfg", json.encodeToString(reminders.toPwaNotifConfig()))
                 put("water", water.toPwaWaterObject())
             },
         )
@@ -125,6 +128,12 @@ class DataExportRepository @Inject constructor(
         }
         root["sfx"]?.jsonPrimitive?.contentOrNull?.let { prefs.setSoundOn(it != "0") }
         root["hfx"]?.jsonPrimitive?.contentOrNull?.let { prefs.setHapticOn(it != "0") }
+        val notifEnabled = root["notif"]?.jsonPrimitive?.contentOrNull?.let { it != "0" && it != "false" }
+        parseReminderConfig(root["notifCfg"], notifEnabled)?.let {
+            prefs.setReminderConfig(it)
+        } ?: notifEnabled?.let {
+            prefs.setReminderConfig(prefs.reminderConfig.first().copy(enabled = it))
+        }
         root["user"]?.jsonPrimitive?.contentOrNull?.takeIf { it != "null" && it.isNotBlank() }?.let { userRaw ->
             val user = json.parseToJsonElement(userRaw).jsonObject
             val weight = user.floatValue("w", 70f)
@@ -196,6 +205,37 @@ class DataExportRepository @Inject constructor(
             put("allerg", allergies)
         },
     )
+
+    private fun ReminderConfig.toPwaNotifConfig(): JsonObject = buildJsonObject {
+        put("breakfast", breakfastTime)
+        put("lunch", lunchTime)
+        put("dinner", dinnerTime)
+        put("waterInterval", waterIntervalHours.toString())
+        put("breakfast_on", breakfastOn)
+        put("lunch_on", lunchOn)
+        put("dinner_on", dinnerOn)
+        put("water_on", waterOn)
+    }
+
+    private fun parseReminderConfig(element: JsonElement?, enabled: Boolean?): ReminderConfig? {
+        element ?: return null
+        return runCatching {
+            val cfg = runCatching { element.jsonObject }.getOrElse {
+                json.parseToJsonElement(element.jsonPrimitive.contentOrNull.orEmpty()).jsonObject
+            }
+            ReminderConfig(
+                enabled = enabled ?: false,
+                breakfastTime = cfg.stringValue("breakfast", "08:30"),
+                lunchTime = cfg.stringValue("lunch", "13:00"),
+                dinnerTime = cfg.stringValue("dinner", "19:00"),
+                waterIntervalHours = cfg.intValue("waterInterval", 2).coerceIn(1, 6),
+                breakfastOn = cfg.boolValue("breakfast_on", cfg.boolValue("breakfastOn", true)),
+                lunchOn = cfg.boolValue("lunch_on", cfg.boolValue("lunchOn", true)),
+                dinnerOn = cfg.boolValue("dinner_on", cfg.boolValue("dinnerOn", true)),
+                waterOn = cfg.boolValue("water_on", cfg.boolValue("waterOn", false)),
+            )
+        }.getOrNull()
+    }
 
     private fun FoodLogEntity.toPwaFoodJson(): JsonObject = buildJsonObject {
         put("food", foodName)
@@ -271,6 +311,9 @@ class DataExportRepository @Inject constructor(
 
     private fun JsonObject.intValue(key: String, default: Int = 0): Int =
         this[key]?.jsonPrimitive?.intOrNull ?: this[key]?.jsonPrimitive?.contentOrNull?.toFloatOrNull()?.toInt() ?: default
+
+    private fun JsonObject.boolValue(key: String, default: Boolean = false): Boolean =
+        this[key]?.jsonPrimitive?.contentOrNull?.let { it == "true" || it == "1" } ?: default
 
     private fun loggedAtFromPwa(date: String, time: String): Long =
         runCatching {

@@ -1,14 +1,19 @@
 package app.calsnap.android.presentation.screens.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.calsnap.android.data.preferences.ReminderConfig
 import app.calsnap.android.data.preferences.SecureKeyStore
 import app.calsnap.android.data.preferences.UserPreferences
+import app.calsnap.android.data.reminders.ReminderScheduler
 import app.calsnap.android.data.remote.GeminiClient
 import app.calsnap.android.data.model.UserProfile
 import app.calsnap.android.data.repository.DataExportRepository
 import app.calsnap.android.domain.BmrCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +23,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val prefs: UserPreferences,
     private val keyStore: SecureKeyStore,
     private val geminiClient: GeminiClient,
@@ -35,6 +41,7 @@ class SettingsViewModel @Inject constructor(
         val language: String = "ru",
         val soundOn: Boolean = false,
         val hapticOn: Boolean = false,
+        val reminderConfig: ReminderConfig = ReminderConfig(),
         val profile: UserProfile? = null,
         val hasGeminiKey: Boolean = false,
         val selectedModel: String = "gemini-flash-lite-latest",
@@ -64,6 +71,9 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             prefs.hapticOn.collect { v -> _ui.update { it.copy(hapticOn = v) } }
+        }
+        viewModelScope.launch {
+            prefs.reminderConfig.collect { v -> _ui.update { it.copy(reminderConfig = v) } }
         }
         viewModelScope.launch {
             prefs.profile.collect { v -> _ui.update { it.copy(profile = v) } }
@@ -102,6 +112,11 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(code: String)  = viewModelScope.launch { prefs.setLanguage(code) }
     fun setSoundOn(on: Boolean) = viewModelScope.launch { prefs.setSoundOn(on) }
     fun setHapticOn(on: Boolean) = viewModelScope.launch { prefs.setHapticOn(on) }
+    fun saveReminderConfig(config: ReminderConfig) = viewModelScope.launch {
+        prefs.setReminderConfig(config)
+        ReminderScheduler.apply(context, config)
+    }
+    fun setRemindersEnabled(on: Boolean) = saveReminderConfig(_ui.value.reminderConfig.copy(enabled = on))
     fun updateProfile(recalculateTargets: Boolean = false, update: (UserProfile) -> UserProfile) {
         viewModelScope.launch {
             val current = _ui.value.profile ?: return@launch
@@ -117,11 +132,17 @@ class SettingsViewModel @Inject constructor(
         _ui.update { it.copy(importLoading = true, importError = null, importDone = false) }
         viewModelScope.launch {
             runCatching { dataExportRepository.importJsonString(content) }
-                .onSuccess { _ui.update { it.copy(importLoading = false, importDone = true, hasGeminiKey = safeHasGeminiKey()) } }
+                .onSuccess {
+                    ReminderScheduler.apply(context, prefs.reminderConfig.first())
+                    _ui.update { it.copy(importLoading = false, importDone = true, hasGeminiKey = safeHasGeminiKey()) }
+                }
                 .onFailure { error -> _ui.update { it.copy(importLoading = false, importError = error.message) } }
         }
     }
-    fun resetAllData() = viewModelScope.launch { dataExportRepository.resetAll() }
+    fun resetAllData() = viewModelScope.launch {
+        dataExportRepository.resetAll()
+        ReminderScheduler.apply(context, ReminderConfig())
+    }
 
     private fun safeHasGeminiKey(): Boolean = runCatching { keyStore.hasGeminiKey() }.getOrDefault(false)
 
